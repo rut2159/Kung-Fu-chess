@@ -1,3 +1,5 @@
+package com.kungfuchess;
+
 public class MoveValidator {
     private final Board board;
     private final char pieceType;
@@ -18,8 +20,10 @@ public class MoveValidator {
     }
 
     public boolean isValid() {
-        if (fromRow == toRow && fromCol == toCol) return false;
-        if (pieceType == '?') return false;
+        if (fromRow == toRow && fromCol == toCol)
+            return false;
+        if (pieceType == '?')
+            return false;
 
         String target = board.getPiece(toRow, toCol);
         if (!target.equals(".") && target.charAt(0) == pieceColor) {
@@ -27,38 +31,40 @@ public class MoveValidator {
         }
 
         switch (pieceType) {
-            case 'K': return deltaRow <= 1 && deltaCol <= 1;
-            case 'R': return (deltaRow == 0 || deltaCol == 0) && isPathClear();
-            case 'B': return (deltaRow == deltaCol) && isPathClear();
-            case 'Q': return (deltaRow == deltaCol || deltaRow == 0 || deltaCol == 0) && isPathClear();
-            case 'N': return (deltaRow == 1 && deltaCol == 2) || (deltaRow == 2 && deltaCol == 1);
-            case 'P': return isValidPawnMove(target);
-            default: return false;
+            case 'K':
+                return deltaRow <= 1 && deltaCol <= 1;
+            case 'R':
+                return (deltaRow == 0 || deltaCol == 0) && isPathClear();
+            case 'B':
+                return (deltaRow == deltaCol) && isPathClear();
+            case 'Q':
+                return (deltaRow == deltaCol || deltaRow == 0 || deltaCol == 0) && isPathClear();
+            case 'N':
+                return (deltaRow == 1 && deltaCol == 2) || (deltaRow == 2 && deltaCol == 1);
+            case 'P':
+                return isValidPawnMove(target);
+            default:
+                return false;
         }
     }
 
     private boolean isValidPawnMove(String target) {
         int direction = (pieceColor == 'w') ? -1 : 1;
-        
-        // תיקון קריטי: שורת ההתחלה היא הקצה המוחלט של הלוח בהתאם לגודלו הדינמי
         int startRow = (pieceColor == 'w') ? board.getRowsCount() - 1 : 0;
 
-        // צעד אחד קדימה (המשבצת חייבת להיות ריקה)
         if (deltaCol == 0 && toRow == fromRow + direction) {
             return target.equals(".");
         }
-        
-        // צעד כפול קדימה משורת ההתחלה + בדיקה שהמסלול (משבצת הביניים) והיעד פנויים
+
         if (deltaCol == 0 && fromRow == startRow && toRow == fromRow + 2 * direction) {
             String intermediatePiece = board.getPiece(fromRow + direction, fromCol);
             return intermediatePiece.equals(".") && target.equals(".");
         }
 
-        // הכאה באלכסון (חייב להיות שם כלי אויב)
         if (deltaCol == 1 && toRow == fromRow + direction) {
             return !target.equals(".");
         }
-        
+
         return false;
     }
 
@@ -71,7 +77,7 @@ public class MoveValidator {
 
         while (currRow != toRow || currCol != toCol) {
             if (!board.getPiece(currRow, currCol).equals(".")) {
-                return false; 
+                return false;
             }
             currRow += stepRow;
             currCol += stepCol;

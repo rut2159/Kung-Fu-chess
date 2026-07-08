@@ -1,6 +1,8 @@
+package com.kungfuchess;
+
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -34,7 +36,8 @@ public class GameEngine {
     }
 
     private void processLine(String line) {
-        if (line.isEmpty()) return;
+        if (line.isEmpty())
+            return;
 
         if (line.equals("Board:")) {
             currentState = GameState.PARSING_BOARD;
@@ -77,7 +80,7 @@ public class GameEngine {
     private boolean isPieceMoving(int row, int col) {
         for (ActiveMove move : ongoingMoves) {
             if (move.fromRow == row && move.fromCol == col) {
-                return true; 
+                return true;
             }
         }
         return false;
@@ -118,11 +121,11 @@ public class GameEngine {
         int currR = r1, currC = c1;
 
         while (currR != r2 || currC != c2) {
-            path.add(new int[]{currR, currC});
+            path.add(new int[] { currR, currC });
             currR += dr;
             currC += dc;
         }
-        path.add(new int[]{r2, c2});
+        path.add(new int[] { r2, c2 });
         return path;
     }
 
@@ -132,15 +135,18 @@ public class GameEngine {
         }
 
         String[] parts = line.split("\\s+");
-        if (parts.length < 3) return;
+        if (parts.length < 3)
+            return;
 
         int x = Integer.parseInt(parts[1]);
         int y = Integer.parseInt(parts[2]);
-        if (x < 0 || y < 0) return;
+        if (x < 0 || y < 0)
+            return;
 
         int col = x / 100;
         int row = y / 100;
-        if (!board.isValidCell(row, col)) return;
+        if (!board.isValidCell(row, col))
+            return;
 
         String clickedPiece = board.getPiece(row, col);
 
@@ -151,7 +157,7 @@ public class GameEngine {
             }
         } else {
             String selectedPiece = board.getPiece(selectedRow, selectedCol);
-            
+
             if (!clickedPiece.equals(".") && clickedPiece.charAt(0) == selectedPiece.charAt(0)) {
                 if (!isPieceMoving(row, col)) {
                     selectedRow = row;
@@ -160,14 +166,15 @@ public class GameEngine {
             } else {
                 MoveValidator validator = new MoveValidator(board, selectedPiece, selectedRow, selectedCol, row, col);
 
-                if (validator.isValid() && canInitiateMove(selectedRow, selectedCol, row, col, selectedPiece.charAt(0))) {
+                if (validator.isValid()
+                        && canInitiateMove(selectedRow, selectedCol, row, col, selectedPiece.charAt(0))) {
                     int distance = Math.max(Math.abs(row - selectedRow), Math.abs(col - selectedCol));
                     long arrivalTime = gameClock + (distance * 1000L);
 
                     ongoingMoves.add(new ActiveMove(selectedRow, selectedCol, row, col, selectedPiece, arrivalTime));
                     board.clearCellStatic(selectedRow, selectedCol);
                 }
-                
+
                 selectedRow = -1;
                 selectedCol = -1;
             }
@@ -176,7 +183,8 @@ public class GameEngine {
 
     private void executeWaitCommand(String line) {
         String[] parts = line.split("\\s+");
-        if (parts.length < 2) return;
+        if (parts.length < 2)
+            return;
 
         int ms = Integer.parseInt(parts[1]);
         gameClock += ms;
@@ -184,14 +192,12 @@ public class GameEngine {
         Iterator<ActiveMove> iterator = ongoingMoves.iterator();
         while (iterator.hasNext()) {
             ActiveMove move = iterator.next();
-            if (gameClock >= move.arrivalTime) { 
-                
+            if (gameClock >= move.arrivalTime) {
                 String target = board.getPiece(move.toRow, move.toCol);
                 if (target.length() >= 2 && target.charAt(1) == 'K') {
-                    isGameOver = true; 
+                    isGameOver = true;
                 }
-                
-                // דרישה 3: מנגנון הכתרה (Promotion) - רגלי שהגיע לשורה האחרונה הופך למלכה
+
                 String pieceToPlace = move.piece;
                 if (pieceToPlace.length() >= 2 && pieceToPlace.charAt(1) == 'P') {
                     int lastRow = (pieceToPlace.charAt(0) == 'w') ? 0 : board.getRowsCount() - 1;
@@ -199,7 +205,7 @@ public class GameEngine {
                         pieceToPlace = "" + pieceToPlace.charAt(0) + "Q";
                     }
                 }
-                
+
                 board.setPieceStatic(move.toRow, move.toCol, pieceToPlace);
                 iterator.remove();
             }

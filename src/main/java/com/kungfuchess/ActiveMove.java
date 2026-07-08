@@ -1,3 +1,5 @@
+package com.kungfuchess;
+
 public class ActiveMove {
     public final int fromRow, fromCol;
     public final int toRow, toCol;

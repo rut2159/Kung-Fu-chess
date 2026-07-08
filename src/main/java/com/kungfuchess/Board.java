@@ -1,3 +1,5 @@
+package com.kungfuchess;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,13 +24,14 @@ public class Board {
     }
 
     public String getPiece(int row, int col) {
-        if (!isValidCell(row, col)) return ".";
-        
+        if (!isValidCell(row, col))
+            return ".";
+
         String staticPiece = grid.get(row)[col];
         if (!staticPiece.equals(".")) {
             return staticPiece;
         }
-        
+
         for (ActiveMove move : ongoingMoves) {
             if (move.fromRow == row && move.fromCol == col) {
                 return move.piece;
@@ -38,7 +41,8 @@ public class Board {
     }
 
     public void setPieceStatic(int row, int col, String piece) {
-        if (isValidCell(row, col)) grid.get(row)[col] = piece;
+        if (isValidCell(row, col))
+            grid.get(row)[col] = piece;
     }
 
     public void clearCellStatic(int row, int col) {
