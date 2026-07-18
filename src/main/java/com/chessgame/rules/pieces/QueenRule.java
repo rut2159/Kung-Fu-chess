@@ -8,7 +8,6 @@ import com.chessgame.model.Position;
 import java.util.HashSet;
 import java.util.Set;
 
-/** QueenRule / חוק מלכה - Rook movement plus bishop movement, בהרכבה (composition). */
 public final class QueenRule implements PieceRule {
     private final RookRule asRook = new RookRule();
     private final BishopRule asBishop = new BishopRule();

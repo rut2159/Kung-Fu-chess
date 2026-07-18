@@ -13,13 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * GameEngineTest / טסטים ל-GameEngine
- *
- * בודק את ה"שער-הכניסה" - game-over guard, האצלת ולידציה, תזמון
- * מוטציה, האצלת wait. GameEngine עצמו לא מכיל לוגיקה - הטסטים
- * האלה בעצם בודקים ש*הסדר* שבו הוא שואל את השכבות האחרות נכון.
- */
 class GameEngineTest {
 
     private Board board;
@@ -45,8 +38,6 @@ class GameEngineTest {
 
     @Test
     void illegalMove_isRejectedWithReasonFromRuleEngine() {
-        // הרוק לא יכול לזוז באלכסון - הסיבה חייבת "לזלוג" מ-RuleEngine
-        // בדיוק כמו שהיא, בלי תרגום/שינוי
         MoveResult result = engine.requestMove(new Position(0, 0), new Position(1, 1));
 
         assertFalse(result.isAccepted());
@@ -57,7 +48,6 @@ class GameEngineTest {
     void whenGameIsAlreadyOver_moveIsRejectedBeforeAnyOtherCheck() {
         gameState.setGameOver(true);
 
-        // גם מהלך שהיה חוקי לגמרי - נדחה, כי game_over נבדק ראשון
         MoveResult result = engine.requestMove(new Position(0, 0), new Position(1, 0));
 
         assertFalse(result.isAccepted());
@@ -67,18 +57,17 @@ class GameEngineTest {
     @Test
     void capturingTheEnemyKing_setsGameOver() {
         engine.requestMove(new Position(0, 0), new Position(0, 1)); // wR -> bK
-        assertFalse(gameState.isGameOver()); // עוד לא - המהלך רק *התחיל*
+        assertFalse(gameState.isGameOver());
 
-        engine.wait(1000); // עכשיו הוא מגיע
+        engine.wait(1000);
 
         assertTrue(gameState.isGameOver());
     }
 
     @Test
     void requestingASecondMoveWhileFirstIsInFlight_isRejected() {
-        engine.requestMove(new Position(0, 0), new Position(0, 1)); // מרחק 1, arrivalTime=1000
+        engine.requestMove(new Position(0, 0), new Position(0, 1));
 
-        // מנסים להזיז את *אותו כלי* שוב, לפני שהמהלך הראשון הגיע
         MoveResult result = engine.requestMove(new Position(0, 0), new Position(1, 0));
 
         assertFalse(result.isAccepted());
@@ -87,7 +76,7 @@ class GameEngineTest {
 
     @Test
     void jumpingAnEmptyCell_isRejectedWithEmptySource() {
-        MoveResult result = engine.requestJump(new Position(1, 1)); // תא ריק בלוח
+        MoveResult result = engine.requestJump(new Position(1, 1));
 
         assertFalse(result.isAccepted());
         assertEquals(MoveReason.EMPTY_SOURCE, result.reason());

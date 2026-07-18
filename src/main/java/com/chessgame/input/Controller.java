@@ -1,28 +1,33 @@
 package com.chessgame.input;
 
 import com.chessgame.engine.GameEngine;
-import com.chessgame.engine.MoveResult;
-import com.chessgame.model.Board;
+import com.chessgame.engine.GameSnapshot;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
+import java.util.Optional;
+
 public final class Controller {
-    private final Board board;
     private final BoardMapper boardMapper;
     private final GameEngine gameEngine;
     private Position selected;
 
-    public Controller(Board board, BoardMapper boardMapper, GameEngine gameEngine) {
-        this.board = board;
+    public Controller(BoardMapper boardMapper, GameEngine gameEngine) {
         this.boardMapper = boardMapper;
         this.gameEngine = gameEngine;
+    }
+
+    public Position selectedCell() { return selected; }
+
+    public void setCellSizePx(int cellSizePx) {
+        boardMapper.setCellSizePx(cellSizePx);
     }
 
     public ControllerResult click(int x, int y) {
         Position cell = boardMapper.pixelToCell(x, y);
 
         if (cell == null) {
-            selected = null; // מבטל אם הייתה בחירה; לא-עושה-כלום אם לא הייתה - אותה שורה מכסה את שניהם
+            selected = null;
             return ControllerResult.noMove();
         }
 
@@ -33,7 +38,6 @@ public final class Controller {
         return handleSecondClick(cell);
     }
 
-    /** תוספת שלנו - קפיצה, לפי אותה תבנית כמו click. */
     public ControllerResult jump(int x, int y) {
         Position cell = boardMapper.pixelToCell(x, y);
         if (cell == null) {
@@ -41,14 +45,14 @@ public final class Controller {
         }
 
         if (cell.equals(selected)) {
-            selected = null; // מבטלים בחירה אם קופצים על הכלי שכרגע נבחר
+            selected = null;
         }
 
         return ControllerResult.moveRequested(gameEngine.requestJump(cell));
     }
 
     private ControllerResult handleFirstClick(Position cell) {
-        if (board.pieceAt(cell) == null) {
+        if (pieceColorAt(cell).isEmpty()) {
             return ControllerResult.noMove();
         }
         selected = cell;
@@ -56,20 +60,23 @@ public final class Controller {
     }
 
     private ControllerResult handleSecondClick(Position cell) {
-        if (isFriendlyReselect(cell)) {
-            selected = cell;
-            return ControllerResult.noMove();
+        Position from = selected;
+        selected = null;
+
+        if (cell.equals(from)) {
+            return ControllerResult.moveRequested(gameEngine.requestJump(cell));
         }
 
-        MoveResult result = gameEngine.requestMove(selected, cell);
-        selected = null;
-        return ControllerResult.moveRequested(result);
+        return ControllerResult.moveRequested(gameEngine.requestMove(from, cell));
     }
 
-    private boolean isFriendlyReselect(Position cell) {
-        Piece clicked = board.pieceAt(cell);
-        if (clicked == null) return false;
-        Piece selectedPiece = board.pieceAt(selected);
-        return selectedPiece != null && selectedPiece.isSameColorAs(clicked);
+    private Optional<Piece.Color> pieceColorAt(Position cell) {
+        GameSnapshot snapshot = gameEngine.snapshot(selected);
+        for (GameSnapshot.PieceView piece : snapshot.pieces()) {
+            if (piece.position().equals(cell)) {
+                return Optional.of(piece.color());
+            }
+        }
+        return Optional.empty();
     }
 }

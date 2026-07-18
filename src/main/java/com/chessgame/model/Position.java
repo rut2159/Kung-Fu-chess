@@ -28,8 +28,6 @@ public final class Position {
 
     @Override
     public int hashCode() {
-        // נוסחה סטנדרטית לשילוב שני int-ים ל-hash אחד -
-        // חיונית כדי ש-Position יעבוד נכון כמפתח ב-Map/Set.
         return HASH_MULTIPLIER * row + col;
     }
 

@@ -2,7 +2,6 @@ package com.chessgame.realtime.airborne;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
-/** AirborneMotion / קפיצה - דאטה בלבד: תא, כלי, זמן-נחיתה. */
 public final class AirborneMotion {
     final Position cell;
     final Piece piece;

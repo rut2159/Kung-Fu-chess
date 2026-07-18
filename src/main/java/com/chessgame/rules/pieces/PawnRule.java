@@ -7,18 +7,6 @@ import com.chessgame.model.Position;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * PawnRule / חוק-רגלי
- *
- * תפקיד: חוקי-תנועה של רגלי. כולל צעד-כפול משורת-ההתחלה (אם שתי
- * המשבצות שבדרך ריקות), ולכידה-באלכסון. "שורת-ההתחלה" מחושבת יחסית
- * לגובה הלוח (לא קבועה) - לבן: height-2, שחור: 1 - כך זה עובד נכון
- * בכל גודל-לוח, לא רק לוח-שחמט סטנדרטי.
- *
- * שים לב: הכתרה (promotion) *לא* נמצאת כאן - זו לא שאלה של "לאן
- * מותר לזוז", אלא "מה קורה בהגעה" (טרנספורמציה של הכלי) - זה נמצא
- * ב-ArrivalResolver.
- */
 public final class PawnRule implements PieceRule {
     @Override
     public Set<Position> legalDestinations(Board board, Piece piece) {

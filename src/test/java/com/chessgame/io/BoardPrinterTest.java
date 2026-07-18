@@ -5,13 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * BoardPrinterTest / טסטים ל-BoardPrinter
- *
- * הכיוון ההפוך מ-BoardParser: Board -> טקסט. הטסט הכי חשוב כאן הוא
- * ה-round-trip (parse ואז print נותן בדיוק את הטקסט המקורי) - זו
- * ההוכחה הכי חזקה ששני הכיוונים "מדברים אותה שפה".
- */
 class BoardPrinterTest {
 
     private final BoardParser parser = new BoardParser();
@@ -33,9 +26,6 @@ class BoardPrinterTest {
 
     @Test
     void parseAndThenPrint_isARoundTrip() {
-        // הטסט המרכזי: כל קלט תקין -> Board -> print חוזר בדיוק
-        // לאותה מחרוזת. אם round-trip נשבר, סימן ש-parser ו-printer
-        // "לא מסכימים" על הפורמט.
         String original = "wK . bR\n. . .\nwN . bK";
 
         Board board = parser.parse(original);

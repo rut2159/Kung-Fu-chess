@@ -11,7 +11,6 @@ public final class ArrivalResolver {
         this.board = board;
     }
 
-    /** מעבד רשימת תנועות-שהגיעו. מחזיר true אם אחת ההגעות לכדה מלך. */
     public boolean resolveArrivals(Iterable<Motion> arrivedMotions) {
         boolean kingCaptured = false;
         for (Motion motion : arrivedMotions) {
@@ -34,13 +33,6 @@ public final class ArrivalResolver {
         return false;
     }
 
-    /**
-     * הכתרה: רגלי שהגיע לשורה-האחרונה עבור הצבע שלו הופך למלכה - אבל
-     * *רק* אם הגיע בצעד-בודד (קדימה או לכידה-אלכסונית), לא ב-double-step.
-     * בשחמט אמיתי double-step אף פעם לא מגיע לשורה-האחרונה (הלוח גדול
-     * מספיק) - אבל בלוחות-בדיקה קטנים זה יכול לקרות "במקרה", וזה לא
-     * אמור להיחשב הכתרה.
-     */
     private void promoteIfEligible(Motion motion) {
         Piece piece = motion.piece();
         if (piece.kind() != Piece.Kind.PAWN) return;

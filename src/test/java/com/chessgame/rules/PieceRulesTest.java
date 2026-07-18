@@ -10,13 +10,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * PieceRulesTest / טסטים לחוקי-התנועה
- *
- * לא בודקים כל מחלקת-חוק (RookRule/BishopRule/...) בנפרד - בודקים
- * דרך PieceRules, כי זו נקודת-הכניסה הציבורית האמיתית שכל שאר
- * המערכת (RuleEngine) משתמשת בה. כל טסט בונה לוח קטן וממוקד.
- */
 class PieceRulesTest {
 
     private final PieceRules pieceRules = new PieceRules();
@@ -28,20 +21,19 @@ class PieceRulesTest {
 
         Set<Position> destinations = pieceRules.legalDestinations(board, rook);
 
-        // אין שום דרך להגיע ל-(0,1) [חוסם] או ל-(0,2) [מעבר לחוסם]
         assertFalse(destinations.contains(new Position(0, 1)));
         assertFalse(destinations.contains(new Position(0, 2)));
     }
 
     @Test
-    void rook_capturesAnEnemyBlockerButDoesNotPassIt() {
+    void rook_passesThroughEnemyBlocker_andReachesBeyond() {
         Board board = new BoardParser().parse("wR bP .");
         Piece rook = board.pieceAt(new Position(0, 0));
 
         Set<Position> destinations = pieceRules.legalDestinations(board, rook);
 
-        assertTrue(destinations.contains(new Position(0, 1)));   // אפשר ללכוד
-        assertFalse(destinations.contains(new Position(0, 2)));   // אבל לא "מעבר" לכלי שנלכד
+        assertTrue(destinations.contains(new Position(0, 1)));
+        assertTrue(destinations.contains(new Position(0, 2)));
     }
 
     @Test
@@ -51,9 +43,9 @@ class PieceRulesTest {
 
         Set<Position> destinations = pieceRules.legalDestinations(board, bishop);
 
-        assertTrue(destinations.contains(new Position(1, 1))); // אלכסון - כן
-        assertFalse(destinations.contains(new Position(0, 1))); // ישר - לא
-        assertFalse(destinations.contains(new Position(1, 0))); // ישר - לא
+        assertTrue(destinations.contains(new Position(1, 1)));
+        assertFalse(destinations.contains(new Position(0, 1)));
+        assertFalse(destinations.contains(new Position(1, 0)));
     }
 
     @Test
@@ -63,21 +55,29 @@ class PieceRulesTest {
 
         Set<Position> destinations = pieceRules.legalDestinations(board, queen);
 
-        assertTrue(destinations.contains(new Position(0, 2))); // ישר - כמו רוק
-        assertTrue(destinations.contains(new Position(2, 2))); // אלכסון - כמו רץ
+        assertTrue(destinations.contains(new Position(0, 2)));
+        assertTrue(destinations.contains(new Position(2, 2)));
     }
 
     @Test
     void knight_jumpsOverBlockers() {
-        // הפרש מוקף לגמרי בכלים ידידותיים - אבל הוא "קופץ" מעליהם,
-        // אז זה לא אמור להפריע לו
         Board board = new BoardParser().parse("wP wP wP\nwP wN wP\nwP wP wP\n. . .\n. . .");
         Piece knight = board.pieceAt(new Position(1, 1));
 
         Set<Position> destinations = pieceRules.legalDestinations(board, knight);
 
-        assertTrue(destinations.contains(new Position(3, 0))); // (1,1)+(2,-1)
-        assertTrue(destinations.contains(new Position(3, 2))); // (1,1)+(2,1)
+        assertTrue(destinations.contains(new Position(3, 0)));
+        assertTrue(destinations.contains(new Position(3, 2)));
+    }
+
+    @Test
+    void knight_canTargetFriendlyOccupiedSquare() {
+        Board board = new BoardParser().parse(". . .\n. . wP\n. . .");
+        Piece knight = new Piece("n", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(0, 0));
+
+        Set<Position> destinations = pieceRules.legalDestinations(board, knight);
+
+        assertTrue(destinations.contains(new Position(1, 2)));
     }
 
     @Test
@@ -87,20 +87,28 @@ class PieceRulesTest {
 
         Set<Position> destinations = pieceRules.legalDestinations(board, king);
 
-        assertEquals(8, destinations.size()); // כל 8 המשבצות מסביב, אף אחת רחוקה יותר
+        assertEquals(8, destinations.size());
     }
 
     @Test
-    void pawn_hasNoTwoStepMoveAndNoPromotion() {
-        // בדיוק לפי הדרישה המפורשת: בלי צעד-כפול, בלי קידום (אנחנו
-        // עדיין לא ממשנו קידום/צעד-כפול - הטסט הזה מתעד את המצב
-        // הנוכחי במפורש)
-        Board board = new BoardParser().parse("wP .\n. .\n. .");
-        Piece pawn = board.pieceAt(new Position(0, 0));
+    void pawn_hasNoTwoStepMoveFromNonStartingRow() {
+        Board board = new BoardParser().parse(".\n.\n.\n.\n.\n.");
+        board.addPiece(new Piece("p", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(1, 0)));
+        Piece pawn = board.pieceAt(new Position(1, 0));
 
         Set<Position> destinations = pieceRules.legalDestinations(board, pawn);
 
-        assertEquals(1, destinations.size()); // רק צעד אחד קדימה
+        assertEquals(1, destinations.size());
+    }
+
+    @Test
+    void pawn_hasDoubleStepFromStartingRow() {
+        Board board = new BoardParser().parse(".\n.\nwP\n.");
+        Piece pawn = board.pieceAt(new Position(2, 0));
+
+        Set<Position> destinations = pieceRules.legalDestinations(board, pawn);
+
         assertTrue(destinations.contains(new Position(1, 0)));
+        assertTrue(destinations.contains(new Position(0, 0)));
     }
 }

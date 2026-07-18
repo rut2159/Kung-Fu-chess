@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * BoardParserTest / טסטים ל-BoardParser
- *
- * פרסינג מלבני, ולידציית טוקן, ומזהי-כלים דטרמיניסטיים - בדיוק מה
- * שהמסמך מגדיר לשכבת Text I/O.
- */
 class BoardParserTest {
 
     private final BoardParser parser = new BoardParser();
@@ -68,7 +62,7 @@ class BoardParserTest {
     void mismatchedRowWidths_throwRowWidthMismatchError() {
         BoardParser.BoardParseException ex = assertThrows(
                 BoardParser.BoardParseException.class,
-                () -> parser.parse("wK . .\n. .")   // שורה שנייה קצרה יותר
+                () -> parser.parse("wK . .\n. .")
         );
 
         assertEquals("ROW_WIDTH_MISMATCH", ex.getMessage());
@@ -76,8 +70,6 @@ class BoardParserTest {
 
     @Test
     void pieceIds_areUniqueAndDeterministic() {
-        // אותו קלט, שני parse-ים נפרדים - חייבים לתת בדיוק אותם ID-ים,
-        // כדי שטסטים יהיו דטרמיניסטיים (חוזרים על עצמם באופן זהה)
         Board board1 = parser.parse("wK bR");
         Board board2 = new BoardParser().parse("wK bR");
 
@@ -85,6 +77,6 @@ class BoardParserTest {
         assertNotEquals(
                 board1.pieceAt(new Position(0, 0)).id(),
                 board1.pieceAt(new Position(0, 1)).id()
-        ); // שני כלים שונים באותו לוח - ID-ים שונים
+        );
     }
 }

@@ -24,7 +24,7 @@ public final class Renderer {
         for (GameSnapshot.PieceView piece : snapshot.pieces()) {
             String marker = symbol(piece);
             if (piece.state() == Piece.State.AIRBORNE) {
-                marker = marker.toLowerCase() + "^"; // סימון-דיבוג לכלי מרחף
+                marker = marker.toLowerCase() + "^";
             }
             grid[piece.position().row()][piece.position().col()] = marker;
         }

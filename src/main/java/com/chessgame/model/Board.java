@@ -22,16 +22,11 @@ public final class Board {
         return height;
     }
 
-    /** בדיקת "בתוך התחום" - בדיוק כמו שהמסמך דורש, זו אחריות של Board ולא של Position. */
     public boolean isInBounds(Position position) {
         return position.row() >= 0 && position.row() < height
                 && position.col() >= 0 && position.col() < width;
     }
 
-    /**
-     * מוסיף כלי חדש למשבצת שלו (piece.cell()).
-     * דוחה תפוסה כפולה - בדיוק כדרישת המסמך.
-     */
     public void addPiece(Piece piece) {
         Position cell = piece.cell();
         if (occupancy.containsKey(cell)) {
@@ -40,21 +35,18 @@ public final class Board {
         occupancy.put(cell, piece);
     }
 
-    /** מסיר כלי ממשבצת נתונה (למשל כלי שנלכד) - מנקה את התא שלו. */
     public void removePiece(Position cell) {
         occupancy.remove(cell);
     }
 
-    /** שולף את הכלי בתא נתון, או null אם התא ריק. */
     public Piece pieceAt(Position cell) {
         return occupancy.get(cell);
     }
 
-    /**
-     * מזיז כלי ממקור ליעד, ומעדכן גם את המפה וגם את הכלי עצמו (piece.cell).
-     * מניח שהוולידציה כבר קרתה - לא בודק שום חוק שחמט. אם יש כלי אויב
-     * ביעד, הוא "נדרס" (זו בדיוק הלכידה, שכבר הוחלט עליה קודם ב-RealTimeArbiter).
-     */
+    public java.util.List<Piece> allPieces() {
+        return new java.util.ArrayList<>(occupancy.values());
+    }
+
     public void movePiece(Position from, Position to) {
         Piece piece = occupancy.remove(from);
         if (piece == null) {

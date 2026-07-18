@@ -8,13 +8,6 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * PieceRules / מרשם חוקים
- *
- * תפקיד: ממפה כל Piece.Kind לחוק-התנועה שלו, ומספקת נקודת-כניסה
- * אחת ("legalDestinations") שכל שאר המערכת (בעיקר RuleEngine) קוראת
- * לה - בלי לדעת בכלל שיש מאחוריה 6 מחלקות נפרדות.
- */
 public final class PieceRules {
     private final Map<Piece.Kind, PieceRule> rules = new EnumMap<>(Piece.Kind.class);
 

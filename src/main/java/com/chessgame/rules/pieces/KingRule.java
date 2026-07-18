@@ -9,7 +9,6 @@ import com.chessgame.model.Position;
 import java.util.HashSet;
 import java.util.Set;
 
-/** KingRule / חוק מלך - תא אחד בכל אחד משמונת הכיוונים. */
 public final class KingRule implements PieceRule {
     private static final int[][] OFFSETS = {
             {-1, -1}, {-1, 0}, {-1, 1},

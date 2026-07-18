@@ -4,13 +4,6 @@ import com.chessgame.io.BoardPrinter;
 
 import java.util.Optional;
 
-/**
- * CommandDispatcher / מפיץ-פקודות
- *
- * תפקיד: מפרש שורת-פקודה בודדת (click/jump/wait/print board), ומנתב
- * אותה לקריאה הנכונה. לא יודע כלום על קריאת-קלט או מכונת-המצבים
- * Board-מול-Commands - מקבל GameSession מוכן ועובד רק דרכו.
- */
 final class CommandDispatcher {
     private final GameSession session;
     private final BoardPrinter boardPrinter = new BoardPrinter();

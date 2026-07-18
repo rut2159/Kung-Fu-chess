@@ -25,10 +25,10 @@ class RealTimeArbiterTest {
         arbiter.startMotion(new Position(0, 0), new Position(0, 1));
 
         boolean kingCaptured = arbiter.advanceTime(999);
-        assertNull(board.pieceAt(new Position(0, 1))); // עוד לא הגיע ב-999ms
+        assertNull(board.pieceAt(new Position(0, 1)));
 
-        kingCaptured |= arbiter.advanceTime(1); // עכשיו בדיוק 1000ms הצטברו
-        assertNotNull(board.pieceAt(new Position(0, 1))); // הגיע!
+        kingCaptured |= arbiter.advanceTime(1);
+        assertNotNull(board.pieceAt(new Position(0, 1)));
         assertFalse(kingCaptured);
     }
 
@@ -37,9 +37,9 @@ class RealTimeArbiterTest {
         arbiter.startMotion(new Position(0, 0), new Position(0, 2));
 
         arbiter.advanceTime(1000);
-        assertNull(board.pieceAt(new Position(0, 2))); // עדיין לא, מרחק 2 = 2000ms
+        assertNull(board.pieceAt(new Position(0, 2)));
 
-        arbiter.advanceTime(1000); // סה"כ 2000ms
+        arbiter.advanceTime(1000);
         assertNotNull(board.pieceAt(new Position(0, 2)));
     }
 
@@ -56,8 +56,6 @@ class RealTimeArbiterTest {
 
     @Test
     void twoSimultaneousMotions_bothArriveIndependently() {
-        // התוספת שלנו: ריבוי-תנועות. שני כלים לא-חוצים-מסלול,
-        // זזים בו-זמנית, שניהם צריכים להגיע בהצלחה
         board = new BoardParser().parse("wR . . bR");
         arbiter = new RealTimeArbiter(board);
 
@@ -65,32 +63,30 @@ class RealTimeArbiterTest {
         arbiter.startMotion(new Position(0, 3), new Position(0, 2));
         arbiter.advanceTime(1000);
 
-        assertNotNull(board.pieceAt(new Position(0, 1))); // wR הגיע
-        assertNotNull(board.pieceAt(new Position(0, 2))); // bR הגיע
+        assertNotNull(board.pieceAt(new Position(0, 1)));
+        assertNotNull(board.pieceAt(new Position(0, 2)));
     }
 
     @Test
     void canStartMotion_isFalseWhenSourcePieceIsAlreadyMoving() {
         arbiter.startMotion(new Position(0, 0), new Position(0, 1));
 
-        // אותו כלי, עוד לא הגיע - ניסיון-מהלך-נוסף על אותו מקור אמור להידחות
         assertFalse(arbiter.canStartMotion(new Position(0, 0), new Position(0, 2)));
     }
 
     @Test
     void jumpingPiece_capturesAnEnemyThatArrivesWhileAirborne() {
-        // תוספת שלנו: קפיצה + לכידה-באוויר
         board = new BoardParser().parse("wK bR .");
         arbiter = new RealTimeArbiter(board);
 
-        arbiter.startJump(new Position(0, 0));                        // wK קופץ, landTime=1000
-        arbiter.startMotion(new Position(0, 1), new Position(0, 0));  // bR רץ אליו, מרחק 1, arrivalTime=1000
+        arbiter.startJump(new Position(0, 0));
+        arbiter.startMotion(new Position(0, 1), new Position(0, 0));
 
         arbiter.advanceTime(1000);
 
-        assertNotNull(board.pieceAt(new Position(0, 0)));   // wK עדיין שם
+        assertNotNull(board.pieceAt(new Position(0, 0)));
         assertEquals(Piece.Kind.KING, board.pieceAt(new Position(0, 0)).kind());
-        assertNull(board.pieceAt(new Position(0, 1)));       // bR נעלם - נלכד באוויר, לא הגיע בכלל
+        assertNull(board.pieceAt(new Position(0, 1)));
     }
 
     @Test
@@ -99,9 +95,10 @@ class RealTimeArbiterTest {
 
         arbiter.advanceTime(1000);
 
-        // הכלי עדיין באותו מקום - אין שינוי בלוח, רק "נחת" (הפסיק להיות מרחף)
         assertNotNull(board.pieceAt(new Position(0, 0)));
-        // ההוכחה שהוא "נחת": עכשיו מותר להתחיל בשבילו מהלך רגיל חדש
+        assertFalse(arbiter.canStartMotion(new Position(0, 0), new Position(0, 1)));
+
+        arbiter.advanceTime(400);
         assertTrue(arbiter.canStartMotion(new Position(0, 0), new Position(0, 1)));
     }
 }

@@ -7,16 +7,6 @@ import com.chessgame.model.Position;
 
 import java.util.Set;
 
-/**
- * RuleEngine / מנוע חוקים
- *
- * תפקיד: לענות "בהינתן תא-מקור ותא-יעד, האם הפקודה הזו חוקית עכשיו?"
- *
- * read-only לגמרי ביחס ל-Board: רק קורא ממנו, אף פעם לא כותב אליו,
- * לא מזיז כלים, לא מוחק לכידות, לא מתחיל תנועות, לא מעדכן מצב משחק.
- *
- * לא בודק game_over בכלל - זו אחריות של GameEngine, שכבה מעליו.
- */
 public final class RuleEngine {
     private final Board board;
     private final PieceRules pieceRules;
@@ -36,9 +26,11 @@ public final class RuleEngine {
             return MoveValidation.invalid(MoveReason.EMPTY_SOURCE);
         }
 
-        Piece destinationOccupant = board.pieceAt(destination);
-        if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
-            return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
+        if (movingPiece.kind() != Piece.Kind.KNIGHT) {
+            Piece destinationOccupant = board.pieceAt(destination);
+            if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
+                return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
+            }
         }
 
         Set<Position> legalDestinations = pieceRules.legalDestinations(board, movingPiece);

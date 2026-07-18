@@ -13,10 +13,10 @@ public final class RookRule implements PieceRule {
 
         Set<Position> destinations = new HashSet<>();
 
-        SlidingMovement.addSlidingDirection(board, piece, -1, 0, destinations); // למעלה
-        SlidingMovement.addSlidingDirection(board, piece, 1, 0, destinations);  // למטה
-        SlidingMovement.addSlidingDirection(board, piece, 0, -1, destinations); // שמאלה
-        SlidingMovement.addSlidingDirection(board, piece, 0, 1, destinations);  // ימינה
+        SlidingMovement.addSlidingDirection(board, piece, -1, 0, destinations);
+        SlidingMovement.addSlidingDirection(board, piece, 1, 0, destinations);
+        SlidingMovement.addSlidingDirection(board, piece, 0, -1, destinations);
+        SlidingMovement.addSlidingDirection(board, piece, 0, 1, destinations);
         return destinations;
     }
 }

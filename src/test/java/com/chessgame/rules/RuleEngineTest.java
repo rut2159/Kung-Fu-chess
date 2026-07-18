@@ -9,13 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * RuleEngineTest / טסטים ל-RuleEngine
- *
- * בודק את כל 4 סיבות-הדחייה (outside_board, empty_source,
- * friendly_destination, illegal_piece_move) + מקרה תקין - בדיוק
- * מה שהמסמך מגדיר כ"reason" יציב וקריא-למכונה.
- */
 class RuleEngineTest {
 
     private Board board;
@@ -23,9 +16,6 @@ class RuleEngineTest {
 
     @BeforeEach
     void setUp() {
-        // BoardParser כבר בדוק בנפרד (BoardParserTest) - כאן אנחנו
-        // סומכים עליו כדי לבנות מהר לוח-בדיקה קריא, במקום board.addPiece
-        // ידני שוב ושוב
         board = new BoardParser().parse("wR . bK\n. . .\nwK . .");
         ruleEngine = new RuleEngine(board, new PieceRules());
     }
@@ -64,7 +54,6 @@ class RuleEngineTest {
 
     @Test
     void movingOntoAFriendlyPiece_isRejected() {
-        // wR ב-(0,0) ל-wK ב-(2,0) - אותו צבע (לבן), אז friendly_destination
         MoveValidation result = ruleEngine.validateMove(new Position(0, 0), new Position(2, 0));
 
         assertFalse(result.isValid());
@@ -73,8 +62,6 @@ class RuleEngineTest {
 
     @Test
     void movingRookDiagonally_isRejectedAsIllegalPieceMove() {
-        // צריח לא זז באלכסון - זה נכשל *לא* בגלל תפוסה/גבולות,
-        // אלא כי זה סותר את חוק-התנועה של הכלי עצמו
         MoveValidation result = ruleEngine.validateMove(new Position(0, 0), new Position(1, 1));
 
         assertFalse(result.isValid());
@@ -83,14 +70,12 @@ class RuleEngineTest {
 
     @Test
     void ruleEngine_neverMutatesTheBoard() {
-        // read-only ביחס ל-Board: אחרי כמה קריאות ל-validateMove
-        // (גם תקינות וגם לא), הלוח חייב להישאר בדיוק כמו שהיה
         Piece pieceBefore = board.pieceAt(new Position(0, 0));
 
         ruleEngine.validateMove(new Position(0, 0), new Position(0, 1));
         ruleEngine.validateMove(new Position(0, 0), new Position(2, 0));
 
         assertSame(pieceBefore, board.pieceAt(new Position(0, 0)));
-        assertNull(board.pieceAt(new Position(0, 1))); // לא זז בפועל!
+        assertNull(board.pieceAt(new Position(0, 1)));
     }
 }

@@ -7,7 +7,6 @@ import com.chessgame.model.Position;
 import java.util.HashSet;
 import java.util.Set;
 
-/** BishopRule / חוק רץ - סליידינג אלכסוני עד חסימה. */
 public final class BishopRule implements PieceRule {
     @Override
     public Set<Position> legalDestinations(Board board, Piece piece) {

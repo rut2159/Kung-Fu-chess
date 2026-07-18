@@ -9,15 +9,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * App / אפליקציה
- *
- * תפקיד: קורא מ-System.in שורה-שורה, ומנתב: שורות-לוח נאספות
- * (עד "Commands:"), ושורות-פקודה מועברות ל-CommandDispatcher.
- * לא בונה בעצמה את שכבות-המשחק (זה GameSession), ולא מפרשת בעצמה
- * תוכן-פקודה (זה CommandDispatcher) - רק לולאת-קריאה + מכונת-מצבים
- * דקה (Board-section מול Commands-section).
- */
 public final class App {
 
     private enum ParsingState { INIT, PARSING_BOARD, PARSING_COMMANDS }
@@ -64,7 +55,7 @@ public final class App {
         } catch (BoardParser.BoardParseException e) {
             System.out.println("ERROR " + e.getMessage());
             System.exit(0);
-            return null; // System.exit כבר עוצר את התהליך - שורה זו לעולם לא רצה בפועל
+            return null;
         }
         return new CommandDispatcher(new GameSession(board));
     }
