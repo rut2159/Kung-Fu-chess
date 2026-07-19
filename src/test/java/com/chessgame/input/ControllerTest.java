@@ -4,6 +4,7 @@ import com.chessgame.engine.GameEngine;
 import com.chessgame.engine.MoveResult;
 import com.chessgame.model.Board;
 import com.chessgame.model.GameState;
+import com.chessgame.model.Position;
 import com.chessgame.io.BoardParser;
 import com.chessgame.realtime.RealTimeArbiter;
 import com.chessgame.rules.PieceRules;
@@ -116,5 +117,55 @@ class ControllerTest {
 
         assertTrue(result.requestedMove());
         assertTrue(result.moveResult().isAccepted());
+    }
+
+    @Test
+    void beginDrag_onEmptyCell_returnsNull() {
+        Position picked = controller.beginDrag(250, 50); // (0,2) - התא הריק היחיד בשורה הזו
+
+        assertNull(picked);
+    }
+
+    @Test
+    void beginDrag_onAPiece_selectsItAndReturnsItsCell() {
+        Position picked = controller.beginDrag(50, 50);
+
+        assertEquals(new Position(0, 0), picked);
+        assertEquals(new Position(0, 0), controller.selectedCell());
+    }
+
+    @Test
+    void endDrag_onADifferentCell_requestsTheMove() {
+        controller.beginDrag(50, 50);
+        ControllerResult result = controller.endDrag(50, 150);
+
+        assertTrue(result.requestedMove());
+        assertTrue(result.moveResult().isAccepted());
+        assertNull(controller.selectedCell(), "הגרירה מסתיימת - אין יותר בחירה פעילה");
+    }
+
+    @Test
+    void endDrag_droppedBackOnTheSameCell_doesNotRequestAMove() {
+        controller.beginDrag(50, 50);
+        ControllerResult result = controller.endDrag(60, 60); // עדיין בתוך אותו תא (0,0)
+
+        assertFalse(result.requestedMove(), "הנחה חזרה על המקור - מבטלים בלי לבקש מהלך");
+        assertNull(controller.selectedCell());
+    }
+
+    @Test
+    void endDrag_outsideTheBoard_cancelsWithoutRequestingAMove() {
+        controller.beginDrag(50, 50);
+        ControllerResult result = controller.endDrag(-10, -10);
+
+        assertFalse(result.requestedMove());
+        assertNull(controller.selectedCell());
+    }
+
+    @Test
+    void endDrag_withoutAPriorBeginDrag_isIgnored() {
+        ControllerResult result = controller.endDrag(50, 150);
+
+        assertFalse(result.requestedMove());
     }
 }

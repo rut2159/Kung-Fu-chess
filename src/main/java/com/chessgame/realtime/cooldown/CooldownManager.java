@@ -52,7 +52,8 @@ public final class CooldownManager {
         entries.add(new CooldownEntry(piece, gameClock, gameClock + shortCooldownMs));
     }
 
-    public void clearExpiredCooldowns(long gameClock) {
+    public List<Position> clearExpiredCooldowns(long gameClock) {
+        List<Position> justExpired = new ArrayList<>();
         Iterator<CooldownEntry> it = entries.iterator();
         while (it.hasNext()) {
             CooldownEntry entry = it.next();
@@ -61,9 +62,11 @@ public final class CooldownManager {
                         || entry.piece.state() == Piece.State.COOLDOWN_SHORT;
                 if (stillCoolingDown) {
                     entry.piece.setState(Piece.State.IDLE);
+                    justExpired.add(entry.piece.cell());
                 }
                 it.remove();
             }
         }
+        return justExpired;
     }
 }

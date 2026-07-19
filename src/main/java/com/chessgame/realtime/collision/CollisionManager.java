@@ -8,6 +8,7 @@ import com.chessgame.realtime.motion.MotionManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class CollisionManager {
     private final Board board;
@@ -21,27 +22,51 @@ public final class CollisionManager {
         this.cellDurationMs = cellDurationMs;
     }
 
-    public void registerIfColliding(Motion newMotion, List<Motion> currentlyActive) {
+    public void registerIfColliding(Motion newMotion, List<Motion> currentlyActive, long gameClock) {
         if (newMotion.piece().kind() == Piece.Kind.KNIGHT) return;
 
         for (Motion existing : currentlyActive) {
             if (existing.piece().kind() == Piece.Kind.KNIGHT) continue;
 
-            Position sharedCell = CollisionGeometry.findSharedCell(newMotion, existing, cellDurationMs);
-            if (sharedCell == null) continue;
-
-            long timeNew = CollisionGeometry.arrivalTimeAt(newMotion, sharedCell, cellDurationMs);
-            long timeExisting = CollisionGeometry.arrivalTimeAt(existing, sharedCell, cellDurationMs);
-            long eventTime = Math.min(timeNew, timeExisting);
-
             if (newMotion.piece().isSameColorAs(existing.piece())) {
-                pending.add(new FriendlyMotionCollision(eventTime, newMotion, existing, sharedCell, timeNew, timeExisting, cellDurationMs));
+                registerFriendlyIfColliding(newMotion, existing, gameClock);
             } else {
-                pending.add(new EnemyMotionCollision(eventTime, newMotion, existing));
+                registerEnemyIfColliding(newMotion, existing, gameClock);
             }
         }
 
         registerStationaryBlockers(newMotion);
+    }
+
+    // התנגשות ידידותית - נשארת בדיוק כמו שהייתה: זיהוי-תא-בדיד, "הקרוב ממשיך".
+    private void registerFriendlyIfColliding(Motion newMotion, Motion existing, long gameClock) {
+        Position sharedCell = CollisionGeometry.findSharedCell(newMotion, existing, cellDurationMs);
+        if (sharedCell == null) return;
+
+        long timeNew = CollisionGeometry.arrivalTimeAt(newMotion, sharedCell, cellDurationMs);
+        long timeExisting = CollisionGeometry.arrivalTimeAt(existing, sharedCell, cellDurationMs);
+        long eventTime = Math.min(timeNew, timeExisting);
+
+        // ראו הערה מקבילה למטה ב-registerEnemyIfColliding.
+        if (eventTime < gameClock) return;
+
+        pending.add(new FriendlyMotionCollision(eventTime, newMotion, existing, sharedCell, timeNew, timeExisting, cellDurationMs));
+    }
+
+    // התנגשות אויב-מול-אויב - זיהוי-רדיוס רציף (0.4 משבצת), "מי-מגיע-אחרון-מנצח".
+    private void registerEnemyIfColliding(Motion newMotion, Motion existing, long gameClock) {
+        Optional<CollisionGeometry.ProximityEvent> proximity = CollisionGeometry.findProximityEvent(newMotion, existing);
+        if (proximity.isEmpty()) return;
+
+        CollisionGeometry.ProximityEvent event = proximity.get();
+
+        // אם רגע-המפגש המחושב כבר עבר ביחס לעכשיו, זו לא התנגשות אמיתית -
+        // הכלי הקיים כבר חלף על-פני הנקודה הזו לפני שהתנועה החדשה בכלל
+        // התחילה. זו בדיוק הבעיה שראינו בתרחיש המלכה/רץ - בלי הבדיקה הזו,
+        // "מפגש" שכבר חלף בזמן עלול "להתפוצץ" מיידית ברגע שכלי חדש נרשם.
+        if (event.eventTime() < gameClock) return;
+
+        pending.add(new EnemyMotionCollision(event.eventTime(), event.winner(), event.loser()));
     }
 
     private void registerStationaryBlockers(Motion newMotion) {
@@ -50,10 +75,14 @@ public final class CollisionManager {
             Piece occupant = board.pieceAt(cell);
             if (occupant == null) continue;
             if (motionManager.isPieceMoving(cell)) continue;
-            if (!occupant.isEnemyOf(newMotion.piece())) continue;
 
             long eventTime = CollisionGeometry.arrivalTimeAt(newMotion, cell, cellDurationMs);
-            pending.add(new StationaryBlockerCollision(eventTime, newMotion, occupant, cell));
+
+            if (occupant.isEnemyOf(newMotion.piece())) {
+                pending.add(new StationaryBlockerCollision(eventTime, newMotion, occupant, cell));
+            } else {
+                pending.add(new StationaryFriendlyBlockerCollision(eventTime, newMotion, occupant, cell, cellDurationMs));
+            }
         }
     }
 

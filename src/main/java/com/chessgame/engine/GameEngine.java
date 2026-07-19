@@ -7,18 +7,24 @@ import com.chessgame.rules.MoveReason;
 import com.chessgame.rules.MoveValidation;
 import com.chessgame.rules.RuleEngine;
 import com.chessgame.realtime.RealTimeArbiter;
-import com.chessgame.realtime.cooldown.CooldownManager;
-import com.chessgame.realtime.motion.Motion;
 import com.chessgame.model.Piece;
 
 import java.util.ArrayList;
 import java.util.List;
+
+/**
+ * מתאם את המהלכים: מקבל בקשות (תנועה/קפיצה/premove), בודק תקינות מול
+ * ה-RuleEngine וה-RealTimeArbiter, ומודיע ל-listeners כשמשהו משתנה.
+ * לא יודע איך בונים snapshot לתצוגה (זה תפקידה של GameSnapshotFactory).
+ */
 public final class GameEngine {
     private final Board board;
     private final GameState gameState;
     private final RuleEngine ruleEngine;
     private final RealTimeArbiter realTimeArbiter;
     private final MoveHistory moveHistory = new MoveHistory();
+    private final PremoveManager premoveManager = new PremoveManager();
+    private final GameSnapshotFactory snapshotFactory;
     private final List<Piece> roster;
     private final List<GameListener> listeners = new ArrayList<>();
 
@@ -28,8 +34,8 @@ public final class GameEngine {
         this.ruleEngine = ruleEngine;
         this.realTimeArbiter = realTimeArbiter;
         this.roster = board.allPieces();
+        this.snapshotFactory = new GameSnapshotFactory(board, realTimeArbiter, premoveManager, roster);
     }
-
 
     public void addListener(GameListener listener) {
         listeners.add(listener);
@@ -49,9 +55,15 @@ public final class GameEngine {
         return ScoreCalculator.score(roster, color);
     }
 
-    public com.chessgame.engine.MoveResult requestMove(Position source, Position destination) {
+    public MoveResult requestMove(Position source, Position destination) {
         if (gameState.isGameOver()) {
-            return com.chessgame.engine.MoveResult.rejected(MoveReason.GAME_OVER);
+            return MoveResult.rejected(MoveReason.GAME_OVER);
+        }
+
+        // הכלי בקירור (לא "בתנועה" ולא "באוויר" - אלה מטופלים ע"י canStartMotion
+        // למטה) - זה בדיוק המצב שבו מותר לתזמן premove במקום סתם לדחות.
+        if (realTimeArbiter.isPieceCoolingDown(source)) {
+            return handlePremoveRequest(source, destination);
         }
 
         if (!realTimeArbiter.canStartMotion(source, destination)) {
@@ -63,6 +75,26 @@ public final class GameEngine {
             return MoveResult.rejected(legality.reason());
         }
 
+        return executeMove(source, destination);
+    }
+
+    /**
+     * הכלי בקירור: אם המהלך המבוקש חוקי - שומרים אותו כ"כוונה עתידית"
+     * (דורס כל premove קודם לאותו כלי). אם הוא לא חוקי - זו בדיוק הדרך
+     * ל"בטל" premove קיים (מהלך-לא-חוקי מוחק את השמירה, בלי לבצע כלום).
+     */
+    private MoveResult handlePremoveRequest(Position source, Position destination) {
+        MoveValidation legality = ruleEngine.validateMove(source, destination);
+        if (!legality.isValid()) {
+            premoveManager.clear(source);
+            return MoveResult.rejected(legality.reason());
+        }
+
+        premoveManager.set(source, destination);
+        return MoveResult.premoveQueued();
+    }
+
+    private MoveResult executeMove(Position source, Position destination) {
         Piece piece = board.pieceAt(source);
         boolean capture = board.pieceAt(destination) != null;
         long timestamp = realTimeArbiter.gameClock();
@@ -73,8 +105,7 @@ public final class GameEngine {
         return MoveResult.accepted();
     }
 
-
-    public java.util.List<MoveRecord> moveHistory() {
+    public List<MoveRecord> moveHistory() {
         return moveHistory.all();
     }
 
@@ -100,93 +131,23 @@ public final class GameEngine {
         if (kingCaptured) {
             gameState.setGameOver(true);
         }
+
+        for (Position position : realTimeArbiter.justExpiredCooldownPositions()) {
+            firePremoveIfAny(position);
+        }
+
         notifyListeners();
     }
 
+    /** אם יש כוונה שמורה עבור הכלי הזה - מנקים אותה ומריצים אותה עכשיו דרך requestMove הרגיל. */
+    private void firePremoveIfAny(Position source) {
+        premoveManager.get(source).ifPresent(destination -> {
+            premoveManager.clear(source);
+            requestMove(source, destination);
+        });
+    }
+
     public GameSnapshot snapshot(Position selectedCell) {
-        List<GameSnapshot.PieceView> pieces = collectPieceViews();
-        boolean isGameOver = gameState.isGameOver();
-        Piece.Color winner = isGameOver ? determineWinner() : null;
-
-        return new GameSnapshot(board.width(), board.height(), pieces, selectedCell, isGameOver, winner);
-    }
-
-    /** עוברת על כל תא-בלוח, ובונה PieceView לכל כלי שנמצא שם. */
-    private List<GameSnapshot.PieceView> collectPieceViews() {
-        List<GameSnapshot.PieceView> pieces = new ArrayList<>();
-        for (int row = 0; row < board.height(); row++) {
-            for (int col = 0; col < board.width(); col++) {
-                Piece piece = board.pieceAt(new Position(row, col));
-                if (piece != null) {
-                    pieces.add(toPieceView(piece));
-                }
-            }
-        }
-        return pieces;
-    }
-
-    /** מפנה למתודה המתאימה, לפי מצב-הכלי - זה כל "הענף" שהיה קודם בתוך הלולאה. */
-    private GameSnapshot.PieceView toPieceView(Piece piece) {
-        if (piece.state() == Piece.State.MOVING) {
-            return movingPieceView(piece);
-        }
-        if (piece.state() == Piece.State.COOLDOWN_LONG || piece.state() == Piece.State.COOLDOWN_SHORT) {
-            return cooldownPieceView(piece);
-        }
-        // AIRBORNE (קפיצה) נשאר כמו שהיה - בלי אינטרפולציה אופקית (אין
-        // לה destination בכלל, ראו AirborneMotion), וגם IDLE/CAPTURED -
-        // displayRow/Col == position, בלי קירור.
-        return new GameSnapshot.PieceView(piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state());
-    }
-
-    /** כלי-בתנועה - מחשבת displayRow/Col מוכנים (ע"י MotionInterpolator), לתנועה-חלקה. */
-    private GameSnapshot.PieceView movingPieceView(Piece piece) {
-        Motion motion = realTimeArbiter.motionOf(piece.cell());
-        Position destination = (motion != null) ? motion.destination() : null;
-        long startTime = (motion != null) ? motion.startTime() : 0;
-        long arrivalTime = (motion != null) ? motion.arrivalTime() : 0;
-
-        double[] display = MotionInterpolator.displayPosition(
-                piece.cell(), destination, startTime, arrivalTime, realTimeArbiter.gameClock());
-
-        return new GameSnapshot.PieceView(
-                piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state(),
-                display[0], display[1]);
-    }
-
-    /** כלי-בקירור - מחשבת cooldownRemaining מוכן (ע"י CooldownInterpolator), לאנימציית-ההדגשה. */
-    private GameSnapshot.PieceView cooldownPieceView(Piece piece) {
-        CooldownManager.CooldownWindow window = realTimeArbiter.cooldownOf(piece.cell());
-        double remaining = (window != null)
-                ? CooldownInterpolator.remainingFraction(window.startTime(), window.endTime(), realTimeArbiter.gameClock())
-                : 0.0;
-
-        return new GameSnapshot.PieceView(
-                piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state(), remaining);
-    }
-
-    /**
-     * קובעת מנצח לפי roster (לא סורקת-שוב את הלוח) - מלך ש"עדיין-לא-
-     * CAPTURED" נחשב-חי. נקראת רק כש-isGameOver==true, אז לא-מריצים
-     * את זה בכל טיק סתם.
-     */
-    private Piece.Color determineWinner() {
-        boolean whiteKingAlive = false;
-        boolean blackKingAlive = false;
-
-        for (Piece piece : roster) {
-            if (piece.kind() != Piece.Kind.KING || piece.state() == Piece.State.CAPTURED) {
-                continue;
-            }
-            if (piece.color() == Piece.Color.WHITE) {
-                whiteKingAlive = true;
-            } else if (piece.color() == Piece.Color.BLACK) {
-                blackKingAlive = true;
-            }
-        }
-
-        if (whiteKingAlive && !blackKingAlive) return Piece.Color.WHITE;
-        if (blackKingAlive && !whiteKingAlive) return Piece.Color.BLACK;
-        return null;
+        return snapshotFactory.build(selectedCell, gameState.isGameOver());
     }
 }

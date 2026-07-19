@@ -15,14 +15,16 @@ class PieceRulesTest {
     private final PieceRules pieceRules = new PieceRules();
 
     @Test
-    void rook_stopsBeforeAFriendlyBlocker() {
+    void rook_cannotLandOnAFriendlyBlocker_butCanSelectBeyondIt() {
         Board board = new BoardParser().parse("wR wP .");
         Piece rook = board.pieceAt(new Position(0, 0));
 
         Set<Position> destinations = pieceRules.legalDestinations(board, rook);
 
+        // אי-אפשר לבחור לנחות ממש על הכלי הידידותי...
         assertFalse(destinations.contains(new Position(0, 1)));
-        assertFalse(destinations.contains(new Position(0, 2)));
+        // ...אבל כן אפשר לבחור יעד מעבר אליו - הוא אולי יזוז בזמן (חוק Kung Fu Chess).
+        assertTrue(destinations.contains(new Position(0, 2)));
     }
 
     @Test

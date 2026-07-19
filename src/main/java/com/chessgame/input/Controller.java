@@ -51,6 +51,36 @@ public final class Controller {
         return ControllerResult.moveRequested(gameEngine.requestJump(cell));
     }
 
+    /** לחיצה (mousePressed) - "מרימים" את הכלי אם יש כזה בתא. מחזירה את התא שנבחר, או null אם אין כלי שם. */
+    public Position beginDrag(int x, int y) {
+        Position cell = boardMapper.pixelToCell(x, y);
+        if (cell == null || pieceColorAt(cell).isEmpty()) {
+            return null;
+        }
+        selected = cell;
+        return cell;
+    }
+
+    /**
+     * שחרור העכבר (mouseReleased) - "מניחים" את הכלי בתא שמתחת לעכבר.
+     * הנחה חזרה על אותו תא, או מחוץ ללוח, מבטלת את הגרירה בלי לבקש מהלך.
+     */
+    public ControllerResult endDrag(int x, int y) {
+        Position from = selected;
+        selected = null;
+
+        if (from == null) {
+            return ControllerResult.noMove();
+        }
+
+        Position releaseCell = boardMapper.pixelToCell(x, y);
+        if (releaseCell == null || releaseCell.equals(from)) {
+            return ControllerResult.noMove();
+        }
+
+        return ControllerResult.moveRequested(gameEngine.requestMove(from, releaseCell));
+    }
+
     private ControllerResult handleFirstClick(Position cell) {
         if (pieceColorAt(cell).isEmpty()) {
             return ControllerResult.noMove();

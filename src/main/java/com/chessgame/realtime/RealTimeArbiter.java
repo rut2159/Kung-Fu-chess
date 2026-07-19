@@ -10,9 +10,22 @@ import com.chessgame.realtime.cooldown.CooldownManager;
 import com.chessgame.realtime.motion.Motion;
 import com.chessgame.realtime.motion.MotionManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class RealTimeArbiter {
+
+    /**
+     * גודל-הצעד הפנימי המקסימלי (מ"ש) שבו מתקדם השעון בכל פעם, בלי קשר
+     * לכמה ביקשו להתקדם בקריאה אחת ל-advanceTime. זה מדמה את מה שקורה
+     * במציאות (ה-Timer האמיתי ב-GameWindow מתקתק כל 33ms, מוגבל ל-165ms
+     * מקסימום) - כדי שהתנהגות המנוע לא תהיה תלויה בגודל-הקפיצה של הקורא.
+     * בלי זה, קפיצת-זמן ענקית-אחת (כמו ב-wait(10000) בטסט) עלולה לגרום
+     * ל-resolveDue לבדוק "מצב-לוח" לפני שהגעה כרונולוגית-מוקדמת-יותר
+     * (אבל שטרם עובדה בתוך אותה קריאה) בכלל התעדכנה על הלוח.
+     */
+    private static final int MAX_STEP_MS = 25;
+
     private final Board board;
     private final SpeedConfig speedConfig;
     private final MotionManager motionManager = new MotionManager();
@@ -22,6 +35,7 @@ public final class RealTimeArbiter {
     private final ArrivalResolver commonRouteResolver;
     private final JumpAwareArrivalResolver arrivalResolver;
     private long gameClock = 0;
+    private List<Position> justExpiredCooldownPositions = List.of();
 
     public RealTimeArbiter(Board board) {
         this(board, SpeedConfig.STANDARD);
@@ -41,6 +55,15 @@ public final class RealTimeArbiter {
         if (airborneManager.isPieceAirborne(source)) return false;
         if (cooldownManager.isPieceCoolingDown(source)) return false;
         return true;
+    }
+
+    public boolean isPieceCoolingDown(Position position) {
+        return cooldownManager.isPieceCoolingDown(position);
+    }
+
+    /** התאים שהקירור שלהם הסתיים בדיוק בקריאה האחרונה ל-advanceTime - לשימוש ע"י premove. */
+    public List<Position> justExpiredCooldownPositions() {
+        return justExpiredCooldownPositions;
     }
 
     public long gameClock() {
@@ -72,7 +95,7 @@ public final class RealTimeArbiter {
 
         List<Motion> othersBefore = motionManager.activeMotionsSnapshot();
         Motion motion = motionManager.startMove(source, destination, piece, gameClock, arrivalTime);
-        collisionManager.registerIfColliding(motion, othersBefore);
+        collisionManager.registerIfColliding(motion, othersBefore, gameClock);
     }
 
     public void startJump(Position position) {
@@ -82,6 +105,26 @@ public final class RealTimeArbiter {
     }
 
     public boolean advanceTime(int milliseconds) {
+        if (milliseconds <= 0) {
+            return advanceTimeStep(milliseconds);
+        }
+
+        boolean kingCaptured = false;
+        List<Position> accumulatedExpired = new ArrayList<>();
+        int remaining = milliseconds;
+
+        while (remaining > 0) {
+            int step = Math.min(remaining, MAX_STEP_MS);
+            kingCaptured |= advanceTimeStep(step);
+            accumulatedExpired.addAll(justExpiredCooldownPositions);
+            remaining -= step;
+        }
+
+        justExpiredCooldownPositions = accumulatedExpired;
+        return kingCaptured;
+    }
+
+    private boolean advanceTimeStep(int milliseconds) {
         gameClock += milliseconds;
 
         boolean kingCapturedByCollision = collisionManager.resolveDue(gameClock);
@@ -102,7 +145,7 @@ public final class RealTimeArbiter {
             }
         }
 
-        cooldownManager.clearExpiredCooldowns(gameClock);
+        justExpiredCooldownPositions = cooldownManager.clearExpiredCooldowns(gameClock);
 
         return kingCapturedByCollision || kingCapturedByArrival;
     }

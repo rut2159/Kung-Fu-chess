@@ -42,23 +42,24 @@ public final class GameSnapshot {
         private final double displayRow;
         private final double displayCol;
         private final double cooldownRemaining;
+        private final boolean hasPremove;
 
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state) {
-            this(id, color, kind, position, state, position.row(), position.col(), 0.0);
+            this(id, color, kind, position, state, position.row(), position.col(), 0.0, false);
         }
 
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
                           double displayRow, double displayCol) {
-            this(id, color, kind, position, state, displayRow, displayCol, 0.0);
+            this(id, color, kind, position, state, displayRow, displayCol, 0.0, false);
         }
 
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
                           double cooldownRemaining) {
-            this(id, color, kind, position, state, position.row(), position.col(), cooldownRemaining);
+            this(id, color, kind, position, state, position.row(), position.col(), cooldownRemaining, false);
         }
 
         private PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
-                           double displayRow, double displayCol, double cooldownRemaining) {
+                           double displayRow, double displayCol, double cooldownRemaining, boolean hasPremove) {
             this.id = id;
             this.color = color;
             this.kind = kind;
@@ -67,6 +68,17 @@ public final class GameSnapshot {
             this.displayRow = displayRow;
             this.displayCol = displayCol;
             this.cooldownRemaining = cooldownRemaining;
+            this.hasPremove = hasPremove;
+        }
+
+        /** מחזירה עותק זהה עם דגל ה-premove מעודכן - כדי לא לגעת בבנאים הקיימים. */
+        public PieceView withPremove(boolean hasPremove) {
+            return new PieceView(id, color, kind, position, state, displayRow, displayCol, cooldownRemaining, hasPremove);
+        }
+
+        /** מחזירה עותק זהה עם מיקום-תצוגה מוחלף - לשימוש ה-UI בזמן גרירה (drag & drop), בלי לגעת בלוגיקת המשחק. */
+        public PieceView withDisplayPosition(double displayRow, double displayCol) {
+            return new PieceView(id, color, kind, position, state, displayRow, displayCol, cooldownRemaining, hasPremove);
         }
 
         public String id() { return id; }
@@ -79,5 +91,6 @@ public final class GameSnapshot {
         public double displayCol() { return displayCol; }
 
         public double cooldownRemaining() { return cooldownRemaining; }
+        public boolean hasPremove() { return hasPremove; }
     }
 }

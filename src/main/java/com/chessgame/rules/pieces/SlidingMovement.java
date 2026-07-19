@@ -18,11 +18,14 @@ final class SlidingMovement {
             Position current = new Position(row, col);
             Piece occupant = board.pieceAt(current);
 
-            if (occupant != null && occupant.isSameColorAs(piece)) {
-                break;
+            // אי אפשר לבחור לנחות ממש על כלי ידידותי - אבל כן אפשר לבחור
+            // יעד מעבר אליו (הוא אולי יזוז בזמן) - ולכן לא עוצרים את הסריקה,
+            // רק מדלגים על הוספת התא הזה עצמו.
+            boolean blockedByFriendly = occupant != null && occupant.isSameColorAs(piece);
+            if (!blockedByFriendly) {
+                destinations.add(current);
             }
 
-            destinations.add(current);
             row += dRow;
             col += dCol;
         }

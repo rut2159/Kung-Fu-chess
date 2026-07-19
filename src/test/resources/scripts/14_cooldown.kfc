@@ -13,7 +13,7 @@ wait 100
 print board
 . wR .
 
-wait 900
+wait 9900
 click 150 50
 click 250 50
 wait 1000

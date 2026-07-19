@@ -5,18 +5,37 @@ import com.chessgame.realtime.motion.Motion;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 final class CollisionGeometry {
     private CollisionGeometry() {}
+
+    /** רדיוס ההתנגשות הפיזי במונחי "משבצות" - קבוע גיאומטרי, לא תלוי במהירות המשחק (Standard/Lightning). */
+    static final double COLLISION_RADIUS_CELLS = 0.4;
+
+    // ---- עדיין בשימוש ע"י FriendlyMotionCollision ו-registerStationaryBlockers (לא נגענו בהם) ----
 
     static List<Position> pathExcludingDestination(Position source, Position destination) {
         List<Position> full = fullPathInclusive(source, destination);
         return full.subList(0, full.size() - 1);
     }
 
+    /**
+     * הנתיב של כלי, בלי משבצת-המוצא שלו עצמו. חשוב עבור findSharedCell:
+     * כלי ש"עוזב" את המשבצת שלו נחשב, לפי fullPathInclusive, כמי ש"הגיע"
+     * אליה מיידית (מרחק 0, ברגע ההתחלה) - עובדה טריוויאלית שגורמת לכל כלי
+     * אחר שעובר דרך אותה משבצת (אפילו הרבה אחרי שהראשון כבר עזב אותה
+     * בפועל) להיראות כאילו "הגיע מאוחר יותר" ולכן נעצר/מבוטל, גם כשהראשון
+     * כבר מזמן לא שם. לכן, משבצת-המוצא לא נחשבת "חוסמת" בכלל.
+     */
+    private static List<Position> pathExcludingSource(Position source, Position destination) {
+        List<Position> full = fullPathInclusive(source, destination);
+        return full.subList(1, full.size());
+    }
+
     static Position findSharedCell(Motion a, Motion b, long cellDurationMs) {
-        List<Position> pathA = fullPathInclusive(a.source(), a.destination());
-        List<Position> pathB = fullPathInclusive(b.source(), b.destination());
+        List<Position> pathA = pathExcludingSource(a.source(), a.destination());
+        List<Position> pathB = pathExcludingSource(b.source(), b.destination());
 
         Position bestCell = null;
         long bestTimeDiff = Long.MAX_VALUE;
@@ -41,8 +60,16 @@ final class CollisionGeometry {
         return motion.startTime() + distance * cellDurationMs;
     }
 
+    /**
+     * האם המסלול-העתידי-בפועל של הכלי (לא כולל את משבצת-המוצא הטריוויאלית
+     * שלו) עובר דרך התא הזה. באג דומה למה שתיקנו ב-findSharedCell: בלי
+     * להוציא את המוצא, כל כלי "עובר" (טריוויאלית) דרך המשבצת שהוא עצמו
+     * עומד בה - מה שגרם ב-FriendlyMotionCollision.resolve() לקטוע-מחדש
+     * בטעות את הכלי ה"ממשיך" בחזרה למשבצת-המוצא שלו-עצמו, כשה"רחוק"
+     * נעצר בדיוק שם.
+     */
     static boolean pathPassesThrough(Motion motion, Position cell) {
-        return fullPathInclusive(motion.source(), motion.destination()).contains(cell);
+        return pathExcludingSource(motion.source(), motion.destination()).contains(cell);
     }
 
     static Position cellBeforeSharedCell(Motion motion, Position sharedCell) {
@@ -67,4 +94,88 @@ final class CollisionGeometry {
     private static int chebyshevDistance(Position a, Position b) {
         return Math.max(Math.abs(a.row() - b.row()), Math.abs(a.col() - b.col()));
     }
+
+    // ---- חדש: זיהוי-רדיוס רציף בין שני כלי-אויב נעים ----
+
+    /** תוצאה של בדיקת מפגש רציף: מתי זה קורה, ומי המנצח (מי ש"מגיע אחרון"). */
+    static final class ProximityEvent {
+        private final long eventTime;
+        private final Motion winner;
+        private final Motion loser;
+
+        private ProximityEvent(long eventTime, Motion winner, Motion loser) {
+            this.eventTime = eventTime;
+            this.winner = winner;
+            this.loser = loser;
+        }
+
+        long eventTime() { return eventTime; }
+        Motion winner() { return winner; }
+        Motion loser() { return loser; }
+    }
+
+    /**
+     * בודקת אם שני כלים הנעים בקו-ישר במהירות קבועה, ייכנסו-אי-פעם לטווח
+     * COLLISION_RADIUS_CELLS אחד מהשני בזמן שבו שניהם "באוויר" (בטווח-הזמן
+     * המשותף שבו שניהם פעילים בו-זמנית).
+     *
+     * אם כן - מחזירה את רגע-הכניסה הראשון לטווח (eventTime). קביעת המנצח
+     * היא "יתרון היוזמה" הפשוט: מי שהתחיל לזוז קודם (startTime נמוך יותר)
+     * הוא המנצח, בלי קשר למרחק/מהירות - בדיוק כפי שנקבע בכלל 1.
+     */
+    static Optional<ProximityEvent> findProximityEvent(Motion a, Motion b) {
+        long t0 = Math.max(a.startTime(), b.startTime());
+        long t1 = Math.min(a.arrivalTime(), b.arrivalTime());
+        if (t0 >= t1) return Optional.empty();
+
+        double durA = a.arrivalTime() - a.startTime();
+        double durB = b.arrivalTime() - b.startTime();
+        double vArow = (a.destination().row() - a.source().row()) / durA;
+        double vAcol = (a.destination().col() - a.source().col()) / durA;
+        double vBrow = (b.destination().row() - b.source().row()) / durB;
+        double vBcol = (b.destination().col() - b.source().col()) / durB;
+
+        double rowA0 = a.source().row() + vArow * (t0 - a.startTime());
+        double colA0 = a.source().col() + vAcol * (t0 - a.startTime());
+        double rowB0 = b.source().row() + vBrow * (t0 - b.startTime());
+        double colB0 = b.source().col() + vBcol * (t0 - b.startTime());
+
+        double dRow0 = rowA0 - rowB0;
+        double dCol0 = colA0 - colB0;
+        double dvRow = vArow - vBrow;
+        double dvCol = vAcol - vBcol;
+
+        double coeffA = dvRow * dvRow + dvCol * dvCol;
+        double coeffB = 2 * (dRow0 * dvRow + dCol0 * dvCol);
+        double coeffC = dRow0 * dRow0 + dCol0 * dCol0 - COLLISION_RADIUS_CELLS * COLLISION_RADIUS_CELLS;
+
+        double maxS = t1 - t0;
+        double entryS;
+
+        if (coeffA == 0) {
+            if (coeffC > 0) return Optional.empty();
+            entryS = 0;
+        } else {
+            double discriminant = coeffB * coeffB - 4 * coeffA * coeffC;
+            if (discriminant < 0) return Optional.empty();
+
+            double sqrtDisc = Math.sqrt(discriminant);
+            double s1 = (-coeffB - sqrtDisc) / (2 * coeffA);
+            double s2 = (-coeffB + sqrtDisc) / (2 * coeffA);
+
+            if (s2 < 0 || s1 > maxS) return Optional.empty();
+            entryS = Math.max(0, s1);
+        }
+
+        long eventTime = t0 + Math.round(entryS);
+
+        // יתרון היוזמה: מי שהתחיל לזוז קודם מנצח - תמיד, בלי קשר לגיאומטריה.
+        // בשוויון מדויק (אותו startTime בדיוק) - ל-b (הכלי שכבר היה פעיל,
+        // "existing") יש עדיפות, כי מבחינה כרונולוגית הוא תמיד נרשם קודם.
+        Motion winner = (a.startTime() < b.startTime()) ? a : b;
+        Motion loser = (winner == a) ? b : a;
+
+        return Optional.of(new ProximityEvent(eventTime, winner, loser));
+    }
 }
+

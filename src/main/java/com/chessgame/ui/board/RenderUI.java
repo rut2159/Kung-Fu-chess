@@ -17,12 +17,13 @@ public final class RenderUI {
     private static final Color SELECTED_CELL_BORDER_COLOR = new Color(255, 255, 255, 230);
     private static final int SELECTED_CELL_BORDER_THICKNESS = 4;
     private static final Color COOLDOWN_HIGHLIGHT_COLOR = new Color(212, 175, 55, 160);
+    private static final Color PREMOVE_HIGHLIGHT_COLOR = new Color(66, 133, 244, 160);
     private static final Color COORDINATE_LABEL_COLOR = new Color(255, 255, 255, 210);
     private static final Color GAME_OVER_BACKGROUND = new Color(0, 0, 0, 235);
     private static final Color GAME_OVER_TITLE_COLOR = Color.WHITE;
     private static final Color GAME_OVER_WINNER_COLOR = new Color(212, 175, 55);
 
-    private static final Map<String, BufferedImage> IMAGE_CACHE = new HashMap<>();
+    private static final Map<String, BufferedImage> IMAGE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     private final UiMapper mapper;
     private final String whitePlayerName;
@@ -49,6 +50,7 @@ public final class RenderUI {
         drawCoordinateLabels(finalBoardImage, cellSize, snapshot.width(), snapshot.height());
 
         for (GameSnapshot.PieceView piece : snapshot.pieces()) {
+            drawPremoveHighlight(finalBoardImage, piece, cellSize);
             drawCooldownHighlight(finalBoardImage, piece, cellSize);
             drawPiece(finalBoardImage, piece, cellSize);
         }
@@ -81,6 +83,15 @@ public final class RenderUI {
         Point pixel = mapper.cellToPixel(piece.displayRow(), piece.displayCol());
         int topY = pixel.y + (cellSize - highlightHeight);
         boardImage.fillRect(pixel.x, topY, cellSize, highlightHeight, COOLDOWN_HIGHLIGHT_COLOR);
+    }
+
+    /** תא-כלי עם premove ממתין - צביעה כחולה שקופה על כל המשבצת (בסגנון-דומה לצביעת הקירור הצהובה). */
+    private void drawPremoveHighlight(Img boardImage, GameSnapshot.PieceView piece, int cellSize) {
+        if (!piece.hasPremove()) {
+            return;
+        }
+        Point pixel = mapper.cellToPixel(piece.displayRow(), piece.displayCol());
+        boardImage.fillRect(pixel.x, pixel.y, cellSize, cellSize, PREMOVE_HIGHLIGHT_COLOR);
     }
 
     private void drawCoordinateLabels(Img boardImage, int cellSize, int cols, int rows) {

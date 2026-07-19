@@ -6,6 +6,7 @@ import com.chessgame.model.Position;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +68,26 @@ class RenderUITest {
 
         assertEquals(320, image.getWidth());
         assertEquals(320, image.getHeight());
+    }
+
+    @Test
+    void renderNewFrame_pieceWithPremove_tintsCellBlue() {
+        mapper.setCellSize(40);
+        List<GameSnapshot.PieceView> pieces = new ArrayList<>();
+        GameSnapshot.PieceView premoveRook = new GameSnapshot.PieceView(
+                "p1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0), Piece.State.COOLDOWN_LONG, 0.3
+        ).withPremove(true);
+        pieces.add(premoveRook);
+        GameSnapshot snapshot = new GameSnapshot(8, 8, pieces, null, false, null);
+
+        BufferedImage image = assertDoesNotThrow(() -> renderUI.renderNewFrame(snapshot));
+
+        // הפינה העליונה-שמאלית של התא לרוב לא מכוסה ע"י ספרייט הכלי, אבל כן ע"י צביעת ה-premove
+        Point pixel = mapper.cellToPixel(new Position(7, 0));
+        int rgb = image.getRGB(pixel.x + 1, pixel.y + 1);
+        int blue = rgb & 0xFF;
+        int red = (rgb >> 16) & 0xFF;
+        assertTrue(blue > red, "הפינה אמורה להיראות כחלחלה מהצביעה של ה-premove");
     }
 
     @Test
