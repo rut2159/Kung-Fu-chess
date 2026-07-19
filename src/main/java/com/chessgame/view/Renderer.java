@@ -1,6 +1,6 @@
 package com.chessgame.view;
 
-import com.chessgame.engine.GameSnapshot;
+import com.chessgame.engine.snapshot.GameSnapshot;
 import com.chessgame.model.Piece;
 
 public final class Renderer {

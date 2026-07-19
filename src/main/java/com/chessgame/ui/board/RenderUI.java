@@ -1,19 +1,20 @@
 package com.chessgame.ui.board;
 
-import com.chessgame.engine.GameSnapshot;
+import com.chessgame.engine.snapshot.GameSnapshot;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.HashMap;
-import java.util.Map;
 
+/**
+ * מרכיבה את פריים-הרינדור הסופי: רקע + הדגשות (בחירה/קירור/premove) +
+ * כלים + מסך-סוף-משחק. לא יודעת איך פותרים נתיב-ספרייט (SpriteResolver)
+ * ולא איך נטענות/נשמרות-במטמון תמונות (ImageCache/ImageLoader).
+ */
 public final class RenderUI {
 
     private static final String BOARD_IMAGE_PATH = "/board.png";
-    private static final String PIECES_BASE_PATH = "/pieces/";
-    private static final int FRAME_COUNT = 5;
     private static final Color SELECTED_CELL_BORDER_COLOR = new Color(255, 255, 255, 230);
     private static final int SELECTED_CELL_BORDER_THICKNESS = 4;
     private static final Color COOLDOWN_HIGHLIGHT_COLOR = new Color(212, 175, 55, 160);
@@ -23,11 +24,11 @@ public final class RenderUI {
     private static final Color GAME_OVER_TITLE_COLOR = Color.WHITE;
     private static final Color GAME_OVER_WINNER_COLOR = new Color(212, 175, 55);
 
-    private static final Map<String, BufferedImage> IMAGE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
-
     private final UiMapper mapper;
     private final String whitePlayerName;
     private final String blackPlayerName;
+    private final ImageCache imageCache = new ImageCache();
+    private final SpriteResolver spriteResolver = new SpriteResolver();
 
     public RenderUI(UiMapper mapper, String whitePlayerName, String blackPlayerName) {
         this.mapper = mapper;
@@ -40,7 +41,7 @@ public final class RenderUI {
         int imageWidth = cellSize * snapshot.width();
         int imageHeight = cellSize * snapshot.height();
 
-        BufferedImage cachedBackground = cachedImage(BOARD_IMAGE_PATH, imageWidth, imageHeight, false);
+        BufferedImage cachedBackground = imageCache.get(BOARD_IMAGE_PATH, imageWidth, imageHeight, false);
         Img finalBoardImage = Img.wrap(cachedBackground).copy();
 
         if (snapshot.selectedCell() != null) {
@@ -60,12 +61,6 @@ public final class RenderUI {
         }
 
         return finalBoardImage.get();
-    }
-
-    private BufferedImage cachedImage(String path, int width, int height, boolean keepAspect) {
-        String key = path + "@" + width + "x" + height;
-        return IMAGE_CACHE.computeIfAbsent(key,
-                k -> new Img().read(path, new Dimension(width, height), keepAspect, null).get());
     }
 
     private void drawSelectedCellHighlight(Img boardImage, Position selectedCell, int cellSize) {
@@ -116,12 +111,12 @@ public final class RenderUI {
     }
 
     private void drawPiece(Img boardImage, GameSnapshot.PieceView piece, int cellSize) {
-        String path = spritePath(piece);
+        String path = spriteResolver.spritePath(piece);
         if (path == null) {
             return;
         }
 
-        BufferedImage cachedPiece = cachedImage(path, cellSize, cellSize, true);
+        BufferedImage cachedPiece = imageCache.get(path, cellSize, cellSize, true);
         Img pieceImg = Img.wrap(cachedPiece);
         Point pixel = mapper.cellToPixel(piece.displayRow(), piece.displayCol());
         pieceImg.drawOn(boardImage, pixel.x, pixel.y);
@@ -150,55 +145,5 @@ public final class RenderUI {
             boardImage.putTextCentered(winnerName + " wins!", centerX, winnerY,
                     winnerFontSize, GAME_OVER_WINNER_COLOR);
         }
-    }
-
-    private String spritePath(GameSnapshot.PieceView piece) {
-        String stateFolder = stateFolder(piece.state());
-        if (stateFolder == null) {
-            return null;
-        }
-        String code = pieceFolderCode(piece.color(), piece.kind());
-        int frame = currentFrameIndex(piece.state());
-        return PIECES_BASE_PATH + code + "/states/" + stateFolder + "/sprites/" + frame + ".png";
-    }
-
-    private String stateFolder(Piece.State state) {
-        switch (state) {
-            case IDLE: return "idle";
-            case MOVING: return "move";
-            case AIRBORNE: return "jump";
-            case COOLDOWN_LONG: return "long_rest";
-            case COOLDOWN_SHORT: return "short_rest";
-            case CAPTURED: return null;
-            default: return null;
-        }
-    }
-
-    private String pieceFolderCode(Piece.Color color, Piece.Kind kind) {
-        String kindLetter;
-        switch (kind) {
-            case KING: kindLetter = "K"; break;
-            case QUEEN: kindLetter = "Q"; break;
-            case ROOK: kindLetter = "R"; break;
-            case BISHOP: kindLetter = "B"; break;
-            case KNIGHT: kindLetter = "N"; break;
-            case PAWN: kindLetter = "P"; break;
-            default: throw new IllegalArgumentException("Unknown piece kind: " + kind);
-        }
-        String colorLetter = (color == Piece.Color.WHITE) ? "W" : "B";
-        return kindLetter + colorLetter;
-    }
-
-    private int currentFrameIndex(Piece.State state) {
-        if (state != Piece.State.MOVING && state != Piece.State.AIRBORNE) {
-            return 1;
-        }
-        int fps = framesPerSecondFor(state);
-        long elapsedFrames = (System.currentTimeMillis() * fps) / 1000;
-        return (int) (elapsedFrames % FRAME_COUNT) + 1;
-    }
-
-    private int framesPerSecondFor(Piece.State state) {
-        return state == Piece.State.AIRBORNE ? 8 : 12;
     }
 }

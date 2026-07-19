@@ -1,6 +1,6 @@
 package com.chessgame.ui.moves;
 
-import com.chessgame.engine.MoveRecord;
+import com.chessgame.engine.moves.MoveRecord;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 

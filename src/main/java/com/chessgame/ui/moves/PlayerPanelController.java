@@ -2,8 +2,8 @@ package com.chessgame.ui.moves;
 
 import com.chessgame.GameSession;
 import com.chessgame.engine.GameEngine;
-import com.chessgame.engine.GameListener;
-import com.chessgame.engine.MoveRecord;
+import com.chessgame.engine.listeners.GameListener;
+import com.chessgame.engine.moves.MoveRecord;
 import com.chessgame.model.Piece;
 
 import java.util.ArrayList;

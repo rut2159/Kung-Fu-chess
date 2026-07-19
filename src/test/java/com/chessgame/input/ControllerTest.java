@@ -1,7 +1,7 @@
 package com.chessgame.input;
 
 import com.chessgame.engine.GameEngine;
-import com.chessgame.engine.MoveResult;
+import com.chessgame.engine.moves.MoveResult;
 import com.chessgame.model.Board;
 import com.chessgame.model.GameState;
 import com.chessgame.model.Position;
@@ -69,7 +69,7 @@ class ControllerTest {
     }
 
     @Test
-    void knightCanCaptureFriendlyPieceThroughController() {
+    void knightCannotCaptureFriendlyPieceThroughController() {
         board = new BoardParser().parse(". . .\n. . wP\n. . .");
         board.addPiece(new com.chessgame.model.Piece("n", com.chessgame.model.Piece.Color.WHITE, com.chessgame.model.Piece.Kind.KNIGHT, new com.chessgame.model.Position(0, 0)));
         GameState gameState = new GameState();
@@ -80,7 +80,7 @@ class ControllerTest {
         ControllerResult result = controller.click(250, 150);
 
         assertTrue(result.requestedMove());
-        assertTrue(result.moveResult().isAccepted());
+        assertFalse(result.moveResult().isAccepted());
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.chessgame.ui.board;
 
-import com.chessgame.engine.GameSnapshot;
+import com.chessgame.engine.snapshot.GameSnapshot;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 import org.junit.jupiter.api.BeforeEach;

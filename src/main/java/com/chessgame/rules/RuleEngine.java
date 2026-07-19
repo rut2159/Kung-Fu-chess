@@ -26,11 +26,10 @@ public final class RuleEngine {
             return MoveValidation.invalid(MoveReason.EMPTY_SOURCE);
         }
 
-        if (movingPiece.kind() != Piece.Kind.KNIGHT) {
-            Piece destinationOccupant = board.pieceAt(destination);
-            if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
-                return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
-            }
+        Piece destinationOccupant = board.pieceAt(destination);
+
+        if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
+            return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
         }
 
         Set<Position> legalDestinations = pieceRules.legalDestinations(board, movingPiece);

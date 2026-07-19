@@ -1,5 +1,7 @@
 package com.chessgame.engine;
 
+import com.chessgame.engine.moves.MoveResult;
+import com.chessgame.engine.snapshot.GameSnapshot;
 import com.chessgame.io.BoardParser;
 import com.chessgame.model.Board;
 import com.chessgame.model.GameState;

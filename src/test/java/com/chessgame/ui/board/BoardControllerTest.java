@@ -56,10 +56,7 @@ class BoardControllerTest {
         GameSession session = sessionFor(board);
         BoardController controller = new BoardController(session, "P2", "P1");
 
-        Class<?> geometryClass = Class.forName("com.chessgame.ui.board.BoardController$BoardGeometry");
-        var ctor = geometryClass.getDeclaredConstructor(int.class, int.class, int.class, int.class);
-        ctor.setAccessible(true);
-        Object geometry = ctor.newInstance(400, 0, 0, 100);
+        BoardGeometry geometry = new BoardGeometry(400, 0, 0, 100);
         java.lang.reflect.Field geometryField = BoardController.class.getDeclaredField("geometry");
         geometryField.setAccessible(true);
         geometryField.set(controller, geometry);
@@ -92,10 +89,7 @@ class BoardControllerTest {
         BoardController controller = new BoardController(session, "Alice", "Bob");
 
         // גיאומטריה קבועה וידועה, כדי לא להסתמך על תזמון componentResized של Swing.
-        Class<?> geometryClass = Class.forName("com.chessgame.ui.board.BoardController$BoardGeometry");
-        var ctor = geometryClass.getDeclaredConstructor(int.class, int.class, int.class, int.class);
-        ctor.setAccessible(true);
-        Object geometry = ctor.newInstance(400, 0, 0, 100);
+        BoardGeometry geometry = new BoardGeometry(400, 0, 0, 100);
         java.lang.reflect.Field geometryField = BoardController.class.getDeclaredField("geometry");
         geometryField.setAccessible(true);
         geometryField.set(controller, geometry);
@@ -138,10 +132,7 @@ class BoardControllerTest {
         GameSession session = sessionFor(board);
         BoardController controller = new BoardController(session, "P2", "P1");
 
-        Class<?> geometryClass = Class.forName("com.chessgame.ui.board.BoardController$BoardGeometry");
-        var ctor = geometryClass.getDeclaredConstructor(int.class, int.class, int.class, int.class);
-        ctor.setAccessible(true);
-        Object geometry = ctor.newInstance(800, 0, 0, 100);
+        BoardGeometry geometry = new BoardGeometry(800, 0, 0, 100);
         java.lang.reflect.Field geometryField = BoardController.class.getDeclaredField("geometry");
         geometryField.setAccessible(true);
         geometryField.set(controller, geometry);

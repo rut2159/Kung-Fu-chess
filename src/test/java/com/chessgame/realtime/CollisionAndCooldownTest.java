@@ -1,7 +1,7 @@
 package com.chessgame.realtime;
 
 import com.chessgame.engine.GameEngine;
-import com.chessgame.engine.MoveResult;
+import com.chessgame.engine.moves.MoveResult;
 import com.chessgame.io.BoardParser;
 import com.chessgame.model.Board;
 import com.chessgame.model.GameState;
@@ -251,20 +251,24 @@ class CollisionAndCooldownTest {
     }
 
     @Test
-    void knightLandingOnFriendlyPiece_capturesItsOwnSide() {
+    void knightCannotLandOnFriendlyOccupiedSquare() {
         Board board = new BoardParser().parse(". . .\n. . wP\n. . .");
         board.addPiece(new Piece("n", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(0, 0)));
         GameEngine engine = engineFor(board);
 
         MoveResult result = engine.requestMove(new Position(0, 0), new Position(1, 2));
-        assertTrue(result.isAccepted());
+        assertFalse(result.isAccepted());
+        assertEquals(MoveReason.FRIENDLY_DESTINATION, result.reason());
 
         engine.wait(2000);
 
         Piece atTarget = board.pieceAt(new Position(1, 2));
         assertNotNull(atTarget);
-        assertEquals(Piece.Kind.KNIGHT, atTarget.kind());
-        assertNull(board.pieceAt(new Position(0, 0)));
+        assertEquals(Piece.Kind.PAWN, atTarget.kind());
+
+        Piece atSource = board.pieceAt(new Position(0, 0));
+        assertNotNull(atSource);
+        assertEquals(Piece.Kind.KNIGHT, atSource.kind());
     }
 
     /**

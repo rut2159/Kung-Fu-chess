@@ -1,60 +1,21 @@
 package com.chessgame.ui.board;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
-import java.io.IOException;
 
-/**
- * Lightweight image‑utility class using only standard JDK APIs.
- */
 public class Img {
 
     private BufferedImage img;
 
-    /* ----------- load & optional resize ----------- */
+    /* ----------- load & optional resize (delegates the actual decode/resize to ImageLoader) ----------- */
     public Img read(String path,
                     Dimension targetSize,
                     boolean keepAspect,
                     Object interpolation /*ignored*/) {
-
-        try (java.io.InputStream in = Img.class.getResourceAsStream(path)) {
-            if (in == null) {
-                throw new IllegalArgumentException("Cannot find image on classpath: " + path);
-            }
-            img = ImageIO.read(in);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Cannot load image: " + path);
-        }
-        if (img == null) throw new IllegalArgumentException("Unsupported image: " + path);
-
-        if (targetSize != null) {
-            int tw = targetSize.width, th = targetSize.height;
-            int w = img.getWidth(), h = img.getHeight();
-
-            int nw, nh;
-            if (keepAspect) {                                                // :contentReference[oaicite:1]{index=1}
-                double s = Math.min(tw / (double) w, th / (double) h);
-                nw = (int) Math.round(w * s);
-                nh = (int) Math.round(h * s);
-            } else { nw = tw; nh = th; }
-
-            BufferedImage dst = new BufferedImage(
-                    nw, nh,
-                    img.getColorModel().hasAlpha()
-                            ? BufferedImage.TYPE_INT_ARGB
-                            : BufferedImage.TYPE_INT_RGB);
-
-            Graphics2D g = dst.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);   // :contentReference[oaicite:2]{index=2}
-            g.drawImage(img, 0, 0, nw, nh, null);
-            g.dispose();
-            img = dst;
-        }
+        img = ImageLoader.load(path, targetSize, keepAspect);
         return this;
     }
 

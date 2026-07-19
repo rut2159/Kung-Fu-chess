@@ -13,6 +13,7 @@ public final class CooldownManager {
     private final long shortCooldownMs;
 
     public record CooldownWindow(long startTime, long endTime) {
+
     }
 
     private final List<CooldownEntry> entries = new ArrayList<>();

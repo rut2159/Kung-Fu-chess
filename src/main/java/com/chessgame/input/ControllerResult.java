@@ -1,6 +1,6 @@
 package com.chessgame.input;
 
-import com.chessgame.engine.MoveResult;
+import com.chessgame.engine.moves.MoveResult;
 
 public final class ControllerResult {
     private final MoveResult moveResult;

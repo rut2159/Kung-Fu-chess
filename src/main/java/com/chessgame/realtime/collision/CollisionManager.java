@@ -55,10 +55,10 @@ public final class CollisionManager {
 
     // התנגשות אויב-מול-אויב - זיהוי-רדיוס רציף (0.4 משבצת), "מי-מגיע-אחרון-מנצח".
     private void registerEnemyIfColliding(Motion newMotion, Motion existing, long gameClock) {
-        Optional<CollisionGeometry.ProximityEvent> proximity = CollisionGeometry.findProximityEvent(newMotion, existing);
+        Optional<EnemyProximityDetector.ProximityEvent> proximity = EnemyProximityDetector.findProximityEvent(newMotion, existing);
         if (proximity.isEmpty()) return;
 
-        CollisionGeometry.ProximityEvent event = proximity.get();
+        EnemyProximityDetector.ProximityEvent event = proximity.get();
 
         // אם רגע-המפגש המחושב כבר עבר ביחס לעכשיו, זו לא התנגשות אמיתית -
         // הכלי הקיים כבר חלף על-פני הנקודה הזו לפני שהתנועה החדשה בכלל

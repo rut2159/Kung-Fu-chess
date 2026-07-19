@@ -1,7 +1,7 @@
 package com.chessgame.input;
 
 import com.chessgame.engine.GameEngine;
-import com.chessgame.engine.GameSnapshot;
+import com.chessgame.engine.snapshot.GameSnapshot;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
