@@ -1,5 +1,11 @@
 package com.chessgame.engine;
 
+import com.chessgame.bus.EventBus;
+import com.chessgame.bus.SimpleEventBus;
+import com.chessgame.bus.events.GameOverEvent;
+import com.chessgame.bus.events.MoveMadeEvent;
+import com.chessgame.bus.events.MoveRejectedEvent;
+import com.chessgame.bus.events.ScoreChangedEvent;
 import com.chessgame.engine.listeners.GameListener;
 import com.chessgame.engine.listeners.GameListenerRegistry;
 import com.chessgame.engine.moves.MoveRecord;
@@ -14,6 +20,7 @@ import com.chessgame.model.GameState;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 import com.chessgame.realtime.RealTimeArbiter;
+import com.chessgame.rules.MoveReason;
 import com.chessgame.rules.RuleEngine;
 
 import java.util.List;
@@ -24,6 +31,7 @@ public final class GameEngine {
     private final MoveRequestHandler moveRequestHandler;
     private final GameSnapshotFactory snapshotFactory;
     private final GameListenerRegistry listeners = new GameListenerRegistry();
+    private final EventBus eventBus = new SimpleEventBus();
     private final List<Piece> roster;
 
     public GameEngine(Board board, GameState gameState, RuleEngine ruleEngine, RealTimeArbiter realTimeArbiter) {
@@ -44,6 +52,10 @@ public final class GameEngine {
         listeners.remove(listener);
     }
 
+    public EventBus eventBus() {
+        return eventBus;
+    }
+
     public int score(Piece.Color color) {
         return ScoreCalculator.score(roster, color);
     }
@@ -51,7 +63,10 @@ public final class GameEngine {
     public MoveResult requestMove(Position source, Position destination) {
         MoveResult result = moveRequestHandler.requestMove(source, destination);
         if (result.isAccepted()) {
+            publishLastMoveMade();
             listeners.notifyListeners(this);
+        } else if (result.reason() != MoveReason.PREMOVE_QUEUED) {
+            eventBus.publish(new MoveRejectedEvent(result.reason()));
         }
         return result;
     }
@@ -63,11 +78,21 @@ public final class GameEngine {
         }
         return result;
     }
+
+    private void publishLastMoveMade() {
+        List<MoveRecord> history = moveRequestHandler.moveHistory();
+        if (!history.isEmpty()) {
+            eventBus.publish(new MoveMadeEvent(history.get(history.size() - 1)));
+        }
+    }
     public List<MoveRecord> moveHistory() {
         return moveRequestHandler.moveHistory();
     }
 
     public void wait(int milliseconds) {
+        int whiteScoreBefore = score(Piece.Color.WHITE);
+        int blackScoreBefore = score(Piece.Color.BLACK);
+
         boolean kingCaptured = realTimeArbiter.advanceTime(milliseconds);
         if (kingCaptured) {
             gameState.setGameOver(true);
@@ -77,7 +102,20 @@ public final class GameEngine {
             moveRequestHandler.firePremoveIfAny(position);
         }
 
+        publishScoreChangeIfAny(Piece.Color.WHITE, whiteScoreBefore);
+        publishScoreChangeIfAny(Piece.Color.BLACK, blackScoreBefore);
+        if (kingCaptured) {
+            eventBus.publish(new GameOverEvent());
+        }
+
         listeners.notifyListeners(this);
+    }
+
+    private void publishScoreChangeIfAny(Piece.Color color, int scoreBefore) {
+        int scoreAfter = score(color);
+        if (scoreAfter != scoreBefore) {
+            eventBus.publish(new ScoreChangedEvent(color, scoreAfter));
+        }
     }
 
     public GameSnapshot snapshot(Position selectedCell) {

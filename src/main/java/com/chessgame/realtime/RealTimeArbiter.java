@@ -15,17 +15,7 @@ import java.util.List;
 
 public final class RealTimeArbiter {
 
-    /**
-     * גודל-הצעד הפנימי המקסימלי (מ"ש) שבו מתקדם השעון בכל פעם, בלי קשר
-     * לכמה ביקשו להתקדם בקריאה אחת ל-advanceTime. זה מדמה את מה שקורה
-     * במציאות (ה-Timer האמיתי ב-GameWindow מתקתק כל 33ms, מוגבל ל-165ms
-     * מקסימום) - כדי שהתנהגות המנוע לא תהיה תלויה בגודל-הקפיצה של הקורא.
-     * בלי זה, קפיצת-זמן ענקית-אחת (כמו ב-wait(10000) בטסט) עלולה לגרום
-     * ל-resolveDue לבדוק "מצב-לוח" לפני שהגעה כרונולוגית-מוקדמת-יותר
-     * (אבל שטרם עובדה בתוך אותה קריאה) בכלל התעדכנה על הלוח.
-     */
     private static final int MAX_STEP_MS = 25;
-
     private final Board board;
     private final SpeedConfig speedConfig;
     private final MotionManager motionManager = new MotionManager();

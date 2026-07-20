@@ -30,7 +30,8 @@ public final class BoardPrinter {
             case ROOK:   kind = 'R'; break;
             case BISHOP: kind = 'B'; break;
             case KNIGHT: kind = 'N'; break;
-            default:     kind = 'P';
+            case PAWN:   kind = 'P'; break;
+            default:     throw new IllegalStateException("Unhandled piece kind: " + piece.kind());
         }
         return "" + color + kind;
     }
