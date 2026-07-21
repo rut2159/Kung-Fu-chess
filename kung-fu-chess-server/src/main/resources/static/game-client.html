@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kung Fu Chess</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #1e1e1e;
+        color: #e8e8e8;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+    }
+    h1 { margin: 4px 0; font-size: clamp(20px, 5vw, 32px); }
+    #status { color: #9aa0a6; margin-bottom: 12px; }
+    #status.connected { color: #4caf50; }
+
+    /* Pure-CSS responsiveness: the board's pixel size is whatever the browser
+       computes for this width (capped, and never taller than the viewport
+       allows) - no JS resize listener or pixel math needed at all. */
+    #boardWrap {
+        position: relative;
+        width: min(640px, 92vw, calc(100vh - 220px));
+        aspect-ratio: 1 / 1;
+        background-image: url('/board.png');
+        background-size: 100% 100%;
+        user-select: none;
+    }
+
+    /* Every square/piece/highlight is positioned with PERCENTAGES of #boardWrap,
+       not pixels - so resizing #boardWrap (which CSS above already does
+       automatically) repositions everything for free. */
+    .square, .piece-sprite, .cooldown-highlight, .premove-highlight, .coordinate-label {
+        position: absolute;
+        width: 12.5%;  /* 100% / 8 */
+        height: 12.5%;
+    }
+    .square { z-index: 1; cursor: grab; }
+    .cooldown-highlight, .premove-highlight { z-index: 2; pointer-events: none; }
+    .piece-sprite { z-index: 3; pointer-events: none; width: 12.5%; height: 12.5%; }
+    .coordinate-label {
+        width: auto; height: auto;
+        z-index: 1;
+        color: rgba(255,255,255,0.824);
+        font-size: clamp(9px, 1.6vw, 13px);
+        pointer-events: none;
+    }
+
+    .square.selected {
+        outline: max(2px, 0.4vw) solid rgba(255,255,255,0.902);
+        outline-offset: calc(-1 * max(2px, 0.4vw));
+    }
+    .cooldown-highlight { background: rgba(212,175,55,0.627); } /* RenderUI.COOLDOWN_HIGHLIGHT_COLOR */
+    .premove-highlight  { background: rgba(66,133,244,0.627); } /* RenderUI.PREMOVE_HIGHLIGHT_COLOR */
+
+    #gameOverBand {
+        position: absolute;
+        left: 0; width: 100%; height: 33.33%; top: 33.33%;
+        z-index: 10;
+        background: rgba(0,0,0,0.922); /* RenderUI.GAME_OVER_BACKGROUND */
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        text-align: center;
+    }
+    #gameOverTitle { color: #ffffff; font-weight: 700; font-size: clamp(16px, 4vw, 28px); }
+    #gameOverWinner { color: rgb(212,175,55); margin-top: 8px; font-size: clamp(12px, 2.5vw, 18px); }
+
+    #dragGhost {
+        position: fixed;
+        z-index: 100;
+        pointer-events: none;
+        display: none;
+        opacity: 0.85;
+    }
+
+    #hint {
+        color: #9aa0a6;
+        margin-top: 10px;
+        font-size: 13px;
+        max-width: min(640px, 92vw);
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+
+<h1>Kung Fu Chess</h1>
+<div id="status">not connected</div>
+<div id="boardWrap">
+    <div id="gameOverBand">
+        <div id="gameOverTitle">GAME OVER</div>
+        <div id="gameOverWinner"></div>
+    </div>
+</div>
+<img id="dragGhost" alt="">
+<div id="hint">
+    Drag a piece to move it (like the desktop app). Click once to select, click again to move.
+    Double-click a piece to jump in place (resets its own cooldown).
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script>
+    const BOARD_SIZE = 8;
+    const FRAME_COUNT = 5;
+    const DRAG_THRESHOLD_PX = 6;
+    const CELL_PCT = 100 / BOARD_SIZE;
+
+    function cellToPercent(row, col) {
+        return { left: col * CELL_PCT, top: row * CELL_PCT };
+    }
+
+    // -----------------------------------------------------------------------
+    // Sprite resolution - mirrors SpriteResolver.java exactly.
+    // -----------------------------------------------------------------------
+    const STATE_FOLDER = {
+        IDLE: 'idle', MOVING: 'move', AIRBORNE: 'jump',
+        COOLDOWN_LONG: 'long_rest', COOLDOWN_SHORT: 'short_rest'
+    };
+    const KIND_LETTER = { KING: 'K', QUEEN: 'Q', ROOK: 'R', BISHOP: 'B', KNIGHT: 'N', PAWN: 'P' };
+
+    function pieceFolderCode(color, kind) {
+        return KIND_LETTER[kind] + (color === 'WHITE' ? 'W' : 'B');
+    }
+    function currentFrameIndex(state) {
+        if (state !== 'MOVING' && state !== 'AIRBORNE') return 1;
+        const fps = state === 'AIRBORNE' ? 8 : 12;
+        return (Math.floor(Date.now() * fps / 1000) % FRAME_COUNT) + 1;
+    }
+    function spritePath(piece) {
+        const stateFolder = STATE_FOLDER[piece.state];
+        if (!stateFolder) return null;
+        const code = pieceFolderCode(piece.color, piece.kind);
+        return '/pieces/' + code + '/states/' + stateFolder + '/sprites/' + currentFrameIndex(piece.state) + '.png';
+    }
+
+    // -----------------------------------------------------------------------
+    // DOM setup
+    // -----------------------------------------------------------------------
+    const boardWrapEl = document.getElementById('boardWrap');
+    const statusEl = document.getElementById('status');
+    const gameOverBandEl = document.getElementById('gameOverBand');
+    const gameOverWinnerEl = document.getElementById('gameOverWinner');
+    const dragGhostEl = document.getElementById('dragGhost');
+    const boardRect = () => boardWrapEl.getBoundingClientRect();
+
+    let latestPieces = [];
+    let selected = null;
+    let drag = null;
+
+    // Persistent per-piece elements, keyed by the piece's stable id. Reused
+    // and updated in place every frame instead of destroyed/recreated - this
+    // is what removes the jitter that constant remove()+recreate() caused.
+    const pieceElements = new Map();     // id -> <img class="piece-sprite">
+    const cooldownElements = new Map();  // id -> <div class="cooldown-highlight">
+    const premoveElements = new Map();   // id -> <div class="premove-highlight">
+
+    const squareElements = {};
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+            const square = document.createElement('div');
+            square.className = 'square';
+            const p = cellToPercent(row, col);
+            square.style.left = p.left + '%';
+            square.style.top = p.top + '%';
+            square.addEventListener('mousedown', e => onMouseDown(e, row, col));
+            square.addEventListener('dblclick', () => onDoubleClick(row, col));
+            boardWrapEl.appendChild(square);
+            squareElements[row + ',' + col] = square;
+        }
+    }
+    for (let col = 0; col < BOARD_SIZE; col++) {
+        const label = document.createElement('div');
+        label.className = 'coordinate-label';
+        label.textContent = String.fromCharCode(97 + col);
+        label.style.left = 'calc(' + (col * CELL_PCT) + '% + 2px)';
+        label.style.top = 'calc(' + ((BOARD_SIZE - 1) * CELL_PCT) + '% + ' + CELL_PCT + '% - 16px)';
+        boardWrapEl.appendChild(label);
+    }
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        const label = document.createElement('div');
+        label.className = 'coordinate-label';
+        label.textContent = String(BOARD_SIZE - row);
+        label.style.left = '2px';
+        label.style.top = 'calc(' + (row * CELL_PCT) + '% + 2px)';
+        boardWrapEl.appendChild(label);
+    }
+
+    function pieceAt(row, col) {
+        return latestPieces.find(p => p.row === row && p.col === col) || null;
+    }
+    function cellFromPageXY(pageX, pageY) {
+        const rect = boardRect();
+        const col = Math.floor(((pageX - rect.left) / rect.width) * BOARD_SIZE);
+        const row = Math.floor(((pageY - rect.top) / rect.height) * BOARD_SIZE);
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return null;
+        return { row, col };
+    }
+    function currentCellSizePx() {
+        return boardRect().width / BOARD_SIZE;
+    }
+
+    // -----------------------------------------------------------------------
+    // Rendering - mirrors RenderUI.java's draw* methods, in the same order.
+    // Reuses one persistent element per piece (see pieceElements/etc. above)
+    // instead of rebuilding the DOM every frame.
+    // -----------------------------------------------------------------------
+
+    function renderFrame(newState) {
+        if (newState.pieces) latestPieces = newState.pieces;
+
+        drawSelectedCellHighlight();
+        syncPieceElements();
+        if (newState.gameOver !== undefined) {
+            drawGameOverBand(newState.gameOver, newState.winner);
+        }
+    }
+
+    function drawSelectedCellHighlight() {
+        for (let row = 0; row < BOARD_SIZE; row++) {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                squareElements[row + ',' + col].classList.toggle(
+                    'selected', selected !== null && selected.row === row && selected.col === col);
+            }
+        }
+    }
+
+    function syncPieceElements() {
+        const currentIds = new Set(latestPieces.map(p => p.id));
+
+        // Remove elements for pieces no longer present (captured).
+        for (const [id, el] of pieceElements) {
+            if (!currentIds.has(id)) { el.remove(); pieceElements.delete(id); }
+        }
+        for (const [id, el] of cooldownElements) {
+            if (!currentIds.has(id)) { el.remove(); cooldownElements.delete(id); }
+        }
+        for (const [id, el] of premoveElements) {
+            if (!currentIds.has(id)) { el.remove(); premoveElements.delete(id); }
+        }
+
+        for (const piece of latestPieces) {
+            updatePremoveHighlight(piece);
+            updateCooldownHighlight(piece);
+            updatePieceSprite(piece);
+        }
+    }
+
+    // Mirrors RenderUI.drawPremoveHighlight.
+    function updatePremoveHighlight(piece) {
+        let el = premoveElements.get(piece.id);
+        if (!piece.hasPremove) {
+            if (el) el.style.display = 'none';
+            return;
+        }
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'premove-highlight';
+            boardWrapEl.appendChild(el);
+            premoveElements.set(piece.id, el);
+        }
+        const p = cellToPercent(piece.displayRow, piece.displayCol);
+        el.style.display = 'block';
+        el.style.left = p.left + '%';
+        el.style.top = p.top + '%';
+    }
+
+    // Mirrors RenderUI.drawCooldownHighlight: height grows from the BOTTOM of
+    // the cell, proportional to the 0..1 cooldownRemaining fraction.
+    function updateCooldownHighlight(piece) {
+        let el = cooldownElements.get(piece.id);
+        if (piece.cooldownRemaining <= 0) {
+            if (el) el.style.display = 'none';
+            return;
+        }
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'cooldown-highlight';
+            boardWrapEl.appendChild(el);
+            cooldownElements.set(piece.id, el);
+        }
+        const p = cellToPercent(piece.displayRow, piece.displayCol);
+        const highlightHeightPct = CELL_PCT * piece.cooldownRemaining;
+        el.style.display = 'block';
+        el.style.left = p.left + '%';
+        el.style.height = highlightHeightPct + '%';
+        el.style.top = (p.top + (CELL_PCT - highlightHeightPct)) + '%';
+    }
+
+    // Mirrors RenderUI.drawPiece: uses displayRow/displayCol (fractional
+    // mid-motion position), reuses one <img> per piece id (updated in place).
+    function updatePieceSprite(piece) {
+        const isBeingDragged = drag && drag.moved && drag.row === piece.row && drag.col === piece.col;
+        let el = pieceElements.get(piece.id);
+
+        const path = spritePath(piece);
+        if (!path || isBeingDragged) {
+            if (el) el.style.display = 'none';
+            return;
+        }
+
+        if (!el) {
+            el = document.createElement('img');
+            el.className = 'piece-sprite';
+            boardWrapEl.appendChild(el);
+            pieceElements.set(piece.id, el);
+        }
+        const p = cellToPercent(piece.displayRow, piece.displayCol);
+        el.style.display = 'block';
+        el.style.left = p.left + '%';
+        el.style.top = p.top + '%';
+        if (!el.src.endsWith(path)) el.src = path; // avoid redundant same-value assignment
+    }
+
+    function drawGameOverBand(isOver, winner) {
+        gameOverBandEl.style.display = isOver ? 'flex' : 'none';
+        gameOverWinnerEl.textContent = winner ? (winner + ' wins!') : '';
+    }
+
+    // -----------------------------------------------------------------------
+    // Input: drag (mirrors BoardDragHandler.java), click-to-select fallback,
+    // double-click = jump (mirrors Controller.jump).
+    // -----------------------------------------------------------------------
+
+    function sendMove(fromRow, fromCol, toRow, toCol) {
+        stompClient.send('/app/move', {}, JSON.stringify({ fromRow, fromCol, toRow, toCol }));
+    }
+    function sendJump(row, col) {
+        stompClient.send('/app/jump', {}, JSON.stringify({ row, col }));
+    }
+
+    function onMouseDown(e, row, col) {
+        const piece = pieceAt(row, col);
+        if (!piece) return;
+        drag = { row, col, startX: e.clientX, startY: e.clientY, moved: false, sprite: spritePath(piece) };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function onMouseMove(e) {
+        if (!drag) return;
+        const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+        if (!drag.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+            drag.moved = true;
+            const size = currentCellSizePx();
+            dragGhostEl.style.width = size + 'px';
+            dragGhostEl.style.height = size + 'px';
+            dragGhostEl.src = drag.sprite;
+            dragGhostEl.style.display = 'block';
+            renderFrame({});
+        }
+        if (drag.moved) {
+            const size = currentCellSizePx();
+            dragGhostEl.style.left = (e.clientX - size / 2) + 'px';
+            dragGhostEl.style.top = (e.clientY - size / 2) + 'px';
+        }
+    }
+
+    function onMouseUp(e) {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        if (!drag) return;
+
+        dragGhostEl.style.display = 'none';
+        const wasActualDrag = drag.moved;
+        const source = { row: drag.row, col: drag.col };
+        drag = null;
+
+        if (wasActualDrag) {
+            const dest = cellFromPageXY(e.clientX, e.clientY);
+            if (dest && (dest.row !== source.row || dest.col !== source.col)) {
+                sendMove(source.row, source.col, dest.row, dest.col);
+            } else {
+                renderFrame({});
+            }
+        } else {
+            onSquareClick(source.row, source.col);
+        }
+    }
+
+    function onSquareClick(row, col) {
+        if (selected === null) {
+            if (pieceAt(row, col)) selected = { row, col };
+        } else if (selected.row === row && selected.col === col) {
+            selected = null;
+        } else {
+            sendMove(selected.row, selected.col, row, col);
+            selected = null;
+        }
+        renderFrame({});
+    }
+
+    function onDoubleClick(row, col) {
+        if (pieceAt(row, col)) sendJump(row, col);
+        selected = null;
+    }
+
+    // Keeps MOVING/AIRBORNE animation frames advancing smoothly between the
+    // server's own 50ms broadcasts - purely re-syncs existing elements
+    // in place (no DOM churn), so this can run often without cost.
+    setInterval(() => renderFrame({}), 40);
+
+    const socket = new SockJS('/ws');
+    const stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function () {
+        statusEl.textContent = 'connected';
+        statusEl.classList.add('connected');
+        stompClient.subscribe('/topic/game', frame => renderFrame(JSON.parse(frame.body)));
+    });
+</script>
+</body>
+</html>

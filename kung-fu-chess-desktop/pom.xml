@@ -1,0 +1,47 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.kungfuchess</groupId>
+        <artifactId>kung-fu-chess-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kung-fu-chess-desktop</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.kungfuchess</groupId>
+            <artifactId>kung-fu-chess-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kungfuchess</groupId>
+            <artifactId>kung-fu-chess-assets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <!-- Fixed from the original pom.xml: this used to point at the
+                         non-existent com.kungfuchess.Main; the real class is
+                         com.chessgame.Main (the console/App entry point).
+                         For the Swing GUI, run com.chessgame.GuiApp instead. -->
+                    <mainClass>com.chessgame.Main</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
