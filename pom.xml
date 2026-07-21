@@ -9,6 +9,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>kung-fu-chess-assets</module>
         <module>kung-fu-chess-core</module>
         <module>kung-fu-chess-desktop</module>
         <module>kung-fu-chess-server</module>
@@ -31,10 +32,15 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- Inter-module dependencies: any module can depend on core this way -->
+            <!-- Inter-module dependencies: any module can depend on core/assets this way -->
             <dependency>
                 <groupId>com.kungfuchess</groupId>
                 <artifactId>kung-fu-chess-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.kungfuchess</groupId>
+                <artifactId>kung-fu-chess-assets</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
