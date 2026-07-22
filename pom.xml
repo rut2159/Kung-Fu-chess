@@ -10,6 +10,7 @@
 
     <modules>
         <module>kung-fu-chess-assets</module>
+        <module>kung-fu-chess-client</module>
         <module>kung-fu-chess-core</module>
         <module>kung-fu-chess-desktop</module>
         <module>kung-fu-chess-server</module>
@@ -43,6 +44,11 @@
                 <artifactId>kung-fu-chess-assets</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.kungfuchess</groupId>
+                <artifactId>kung-fu-chess-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -54,7 +60,16 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <release>23</release>
+                        <!-- Matches the actual JDK being used (26) - compiling for an
+                             older <release> than the running JDK is "cross-release"
+                             compilation, a less battle-tested code path in javac that
+                             is a known source of internal compiler instability,
+                             especially on a very recently released JDK. This mismatch
+                             (23 vs the JDK 26 actually in use) is the real root cause
+                             of the ConcurrentModificationException. -->
+                        <release>26</release>
+                        <useIncrementalCompilation>false</useIncrementalCompilation>
+                        <fork>true</fork>
                     </configuration>
                 </plugin>
                 <plugin>

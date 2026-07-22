@@ -2,6 +2,7 @@ package com.chessgame.realtime.airborne;
 
 import com.chessgame.model.Board;
 import com.chessgame.model.Piece;
+import com.chessgame.realtime.ArrivalOutcome;
 import com.chessgame.realtime.ArrivalResolver;
 import com.chessgame.realtime.motion.Motion;
 
@@ -20,12 +21,14 @@ public final class JumpAwareArrivalResolver {
         this.airborneManager = airborneManager;
     }
 
-    public boolean resolveArrivals(Iterable<Motion> arrivedMotions) {
+    public java.util.List<ArrivalOutcome> resolveArrivals(Iterable<Motion> arrivedMotions) {
         List<Motion> remaining = new ArrayList<>();
 
         for (Motion motion : arrivedMotions) {
             Optional<AirborneMotion> defender = airborneManager.findCapturingJump(motion);
             if (defender.isPresent()) {
+                // The mover itself was intercepted mid-flight and never actually
+                // arrived as a completed move - nothing to log as a move here.
                 resolveAirborneCapture(motion, defender.get());
             } else {
                 remaining.add(motion);

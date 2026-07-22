@@ -8,7 +8,8 @@ public enum MoveReason {
     ILLEGAL_PIECE_MOVE("illegal_piece_move"),
     GAME_OVER("game_over"),
     MOTION_IN_PROGRESS("motion_in_progress"),
-    PREMOVE_QUEUED("premove_queued");
+    PREMOVE_QUEUED("premove_queued"),
+    WAITING_FOR_OPPONENT("waiting_for_opponent");
 
     private final String label;
 

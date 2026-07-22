@@ -19,6 +19,53 @@
     h1 { margin: 4px 0; font-size: clamp(20px, 5vw, 32px); }
     #status { color: #9aa0a6; margin-bottom: 12px; }
     #status.connected { color: #4caf50; }
+    #roleInfo { color: #f5c518; margin-bottom: 8px; min-height: 18px; }
+    #scoreboard {
+        display: flex;
+        justify-content: space-between;
+        width: min(640px, 92vw);
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    #scoreboard .side { color: #e8e8e8; unicode-bidi: isolate; }
+    #scoreboard .points { color: #9aa0a6; margin-left: 4px; margin-right: 4px; unicode-bidi: isolate; }
+
+    #loginScreen {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        width: min(320px, 90vw);
+        margin-bottom: 16px;
+    }
+    #loginInstructions {
+        color: #9aa0a6;
+        font-size: 12px;
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+    #loginScreen label {
+        color: #cfd2d6;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    #loginScreen input {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #2a2a2a;
+        color: #e8e8e8;
+        margin-bottom: 6px;
+    }
+    #loginScreen button {
+        padding: 8px;
+        border-radius: 6px;
+        border: none;
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+        margin-top: 4px;
+    }
+    #loginMessage { color: #e57373; font-size: 13px; min-height: 16px; margin-top: 6px; }
 
     /* Pure-CSS responsiveness: the board's pixel size is whatever the browser
        computes for this width (capped, and never taller than the viewport
@@ -88,11 +135,36 @@
         max-width: min(640px, 92vw);
         text-align: center;
     }
+    #rejectionToast {
+        display: none;
+        margin-top: 8px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background: #4a1b0c;
+        color: #f0997b;
+        font-size: 13px;
+    }
 </style>
 </head>
 <body>
 
 <h1>Kung Fu Chess</h1>
+<div id="rejectionToast"></div>
+<div id="loginScreen">
+    <div id="loginInstructions">משתמש/ת חדש/ה? קודם לחצי <b>הרשמה</b>. כבר נרשמת? מלאי את אותם פרטים ולחצי <b>כניסה</b>.</div>
+    <label for="usernameInput">שם משתמש</label>
+    <input id="usernameInput" placeholder="לדוגמה: dana123" autocomplete="username">
+    <label for="passwordInput">סיסמה</label>
+    <input id="passwordInput" type="password" placeholder="הסיסמה שלך" autocomplete="current-password">
+    <button onclick="doLogin()">כניסה (Log in)</button>
+    <button onclick="doRegister()">הרשמה (Register)</button>
+    <div id="loginMessage"></div>
+</div>
+<div id="roleInfo"></div>
+<div id="scoreboard">
+    <span class="side" id="whiteScoreLine">White: -</span>
+    <span class="side" id="blackScoreLine">Black: -</span>
+</div>
 <div id="status">not connected</div>
 <div id="boardWrap">
     <div id="gameOverBand">
@@ -147,6 +219,87 @@
     // -----------------------------------------------------------------------
     const boardWrapEl = document.getElementById('boardWrap');
     const statusEl = document.getElementById('status');
+    const roleInfoEl = document.getElementById('roleInfo');
+    let myUsername = null;
+    let stompConnected = false;
+
+    async function doRegister() {
+        const username = document.getElementById('usernameInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+        const msgEl = document.getElementById('loginMessage');
+        if (!username || !password) { msgEl.textContent = 'נא למלא שם משתמש וסיסמה'; return; }
+
+        const response = await fetch('/api/register', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        msgEl.textContent = data.success
+                ? 'נרשמת בהצלחה! עכשיו לחצי כניסה (Log in)'
+                : 'שם המשתמש כבר תפוס';
+    }
+
+    async function doLogin() {
+        const username = document.getElementById('usernameInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+        const msgEl = document.getElementById('loginMessage');
+        if (!username || !password) { msgEl.textContent = 'נא למלא שם משתמש וסיסמה'; return; }
+
+        const response = await fetch('/api/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            msgEl.textContent = 'שם משתמש או סיסמה שגויים (נרשמת קודם? לחצי הרשמה)';
+            return;
+        }
+
+        myUsername = data.username;
+        document.getElementById('loginScreen').style.display = 'none';
+        if (stompConnected) sendJoin();
+    }
+
+    function sendJoin() {
+        stompClient.send('/app/join', {}, JSON.stringify({ username: myUsername }));
+    }
+
+    function updateRoleInfo(state) {
+        if (!myUsername) { roleInfoEl.textContent = ''; return; }
+        if (state.whiteUsername === myUsername) roleInfoEl.textContent = 'You are: WHITE';
+        else if (state.blackUsername === myUsername) roleInfoEl.textContent = 'You are: BLACK';
+        else roleInfoEl.textContent = 'You are: VIEWER (spectating)';
+    }
+
+    function updateScoreboard(state) {
+        setScoreLine('whiteScoreLine', state.whiteUsername || 'White', state.whiteScore);
+        setScoreLine('blackScoreLine', state.blackUsername || 'Black', state.blackScore);
+    }
+
+    function setScoreLine(elementId, name, score) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = '';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.setAttribute('dir', 'auto'); // lets the browser pick LTR/RTL per the actual name
+        nameSpan.textContent = name;
+
+        const pointsSpan = document.createElement('span');
+        pointsSpan.className = 'points';
+        pointsSpan.textContent = score + ' pts';
+
+        el.appendChild(nameSpan);
+        el.appendChild(pointsSpan);
+    }
+
+    let toastTimer = null;
+    function showRejectionToast(reason) {
+        const el = document.getElementById('rejectionToast');
+        el.textContent = 'Move rejected: ' + reason;
+        el.style.display = 'block';
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2000);
+    }
     const gameOverBandEl = document.getElementById('gameOverBand');
     const gameOverWinnerEl = document.getElementById('gameOverWinner');
     const dragGhostEl = document.getElementById('dragGhost');
@@ -216,6 +369,8 @@
 
     function renderFrame(newState) {
         if (newState.pieces) latestPieces = newState.pieces;
+        if (newState.whiteUsername !== undefined) updateRoleInfo(newState);
+        if (newState.whiteScore !== undefined) updateScoreboard(newState);
 
         drawSelectedCellHighlight();
         syncPieceElements();
@@ -415,7 +570,15 @@
     stompClient.connect({}, function () {
         statusEl.textContent = 'connected';
         statusEl.classList.add('connected');
+        stompConnected = true;
+        if (myUsername) sendJoin();
         stompClient.subscribe('/topic/game', frame => renderFrame(JSON.parse(frame.body)));
+        stompClient.subscribe('/topic/errors', frame => {
+            const error = JSON.parse(frame.body);
+            if (error.username === myUsername) {
+                showRejectionToast(error.reason);
+            }
+        });
     });
 </script>
 </body>

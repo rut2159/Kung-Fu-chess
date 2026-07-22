@@ -61,6 +61,7 @@ class DesktopGameSessionTest {
 
         session.controller.click(50, 50);
         session.controller.click(150, 50);
+        session.gameEngine.wait(1000); // MoveMadeEvent now fires at arrival, not at the request itself
 
         String output = captured.toString(StandardCharsets.UTF_8);
         assertTrue(output.contains("[MOVE]"),

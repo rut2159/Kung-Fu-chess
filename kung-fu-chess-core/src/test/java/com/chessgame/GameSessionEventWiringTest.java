@@ -51,6 +51,7 @@ class GameSessionEventWiringTest {
         GameSession session = new GameSession(board);
 
         session.gameEngine.requestMove(new com.chessgame.model.Position(0, 0), new com.chessgame.model.Position(0, 1));
+        session.gameEngine.wait(1000); // MoveMadeEvent now fires at arrival, not at the request itself
 
         String output = captured.toString(StandardCharsets.UTF_8);
         assertTrue(output.contains("[MOVE]"),

@@ -19,7 +19,9 @@ import com.chessgame.model.Board;
 import com.chessgame.model.GameState;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
+import com.chessgame.realtime.ArrivalOutcome;
 import com.chessgame.realtime.RealTimeArbiter;
+import com.chessgame.realtime.motion.Motion;
 import com.chessgame.rules.MoveReason;
 import com.chessgame.rules.RuleEngine;
 
@@ -63,7 +65,11 @@ public final class GameEngine {
     public MoveResult requestMove(Position source, Position destination) {
         MoveResult result = moveRequestHandler.requestMove(source, destination);
         if (result.isAccepted()) {
-            publishLastMoveMade();
+            // Deliberately does NOT publish MoveMadeEvent here: acceptance only
+            // means the motion has started, not that its outcome (in
+            // particular, whether it's a capture) is known yet - the target
+            // can still escape mid-flight. See wait() for where the real,
+            // arrival-time outcome gets published.
             listeners.notifyListeners(this);
         } else if (result.reason() != MoveReason.PREMOVE_QUEUED) {
             eventBus.publish(new MoveRejectedEvent(result.reason()));
@@ -79,12 +85,6 @@ public final class GameEngine {
         return result;
     }
 
-    private void publishLastMoveMade() {
-        List<MoveRecord> history = moveRequestHandler.moveHistory();
-        if (!history.isEmpty()) {
-            eventBus.publish(new MoveMadeEvent(history.get(history.size() - 1)));
-        }
-    }
     public List<MoveRecord> moveHistory() {
         return moveRequestHandler.moveHistory();
     }
@@ -98,8 +98,19 @@ public final class GameEngine {
             gameState.setGameOver(true);
         }
 
+        for (ArrivalOutcome outcome : realTimeArbiter.justResolvedArrivals()) {
+            Motion motion = outcome.motion();
+            MoveRecord record = new MoveRecord(
+                    motion.piece().color(), outcome.movedKind(),
+                    motion.source(), motion.destination(),
+                    outcome.captured(), realTimeArbiter.gameClock());
+            moveRequestHandler.recordCompletedMove(record);
+            eventBus.publish(new MoveMadeEvent(record));
+        }
+
         for (Position position : realTimeArbiter.justExpiredCooldownPositions()) {
-            moveRequestHandler.firePremoveIfAny(position);
+            moveRequestHandler.takeQueuedPremove(position)
+                    .ifPresent(destination -> requestMove(position, destination));
         }
 
         publishScoreChangeIfAny(Piece.Color.WHITE, whiteScoreBefore);

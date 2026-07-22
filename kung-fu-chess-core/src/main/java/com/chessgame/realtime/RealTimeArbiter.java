@@ -26,6 +26,7 @@ public final class RealTimeArbiter {
     private final JumpAwareArrivalResolver arrivalResolver;
     private long gameClock = 0;
     private List<Position> justExpiredCooldownPositions = List.of();
+    private List<ArrivalOutcome> justResolvedArrivals = List.of();
 
     public RealTimeArbiter(Board board) {
         this(board, SpeedConfig.STANDARD);
@@ -54,6 +55,11 @@ public final class RealTimeArbiter {
     /** התאים שהקירור שלהם הסתיים בדיוק בקריאה האחרונה ל-advanceTime - לשימוש ע"י premove. */
     public List<Position> justExpiredCooldownPositions() {
         return justExpiredCooldownPositions;
+    }
+
+    /** מה שבאמת קרה לכל תזוזה שהגיעה ליעדה בקריאה האחרונה ל-advanceTime - האמת היחידה לגבי capture. */
+    public List<ArrivalOutcome> justResolvedArrivals() {
+        return justResolvedArrivals;
     }
 
     public long gameClock() {
@@ -101,16 +107,19 @@ public final class RealTimeArbiter {
 
         boolean kingCaptured = false;
         List<Position> accumulatedExpired = new ArrayList<>();
+        List<ArrivalOutcome> accumulatedArrivals = new ArrayList<>();
         int remaining = milliseconds;
 
         while (remaining > 0) {
             int step = Math.min(remaining, MAX_STEP_MS);
             kingCaptured |= advanceTimeStep(step);
             accumulatedExpired.addAll(justExpiredCooldownPositions);
+            accumulatedArrivals.addAll(justResolvedArrivals);
             remaining -= step;
         }
 
         justExpiredCooldownPositions = accumulatedExpired;
+        justResolvedArrivals = accumulatedArrivals;
         return kingCaptured;
     }
 
@@ -120,7 +129,9 @@ public final class RealTimeArbiter {
         boolean kingCapturedByCollision = collisionManager.resolveDue(gameClock);
 
         List<Motion> arrived = motionManager.collectArrived(gameClock);
-        boolean kingCapturedByArrival = arrivalResolver.resolveArrivals(arrived);
+        List<ArrivalOutcome> outcomes = arrivalResolver.resolveArrivals(arrived);
+        justResolvedArrivals = outcomes;
+        boolean kingCapturedByArrival = outcomes.stream().anyMatch(ArrivalOutcome::kingCaptured);
 
         for (Motion motion : arrived) {
             if (motion.piece().state() == Piece.State.IDLE) {

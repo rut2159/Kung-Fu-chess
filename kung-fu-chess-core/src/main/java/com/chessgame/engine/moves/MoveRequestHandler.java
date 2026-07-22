@@ -11,6 +11,7 @@ import com.chessgame.rules.MoveValidation;
 import com.chessgame.rules.RuleEngine;
 
 import java.util.List;
+import java.util.Optional;
 
 public final class MoveRequestHandler {
     private final Board board;
@@ -62,13 +63,13 @@ public final class MoveRequestHandler {
     }
 
     private MoveResult executeMove(Position source, Position destination) {
-        Piece piece = board.pieceAt(source);
-        boolean capture = board.pieceAt(destination) != null;
-        long timestamp = realTimeArbiter.gameClock();
-
         realTimeArbiter.startMotion(source, destination);
-        moveHistory.record(new MoveRecord(piece.color(), piece.kind(), source, destination, capture, timestamp));
         return MoveResult.accepted();
+    }
+
+    /** Called by GameEngine once a motion actually arrives, with the real (not guessed) outcome. */
+    public void recordCompletedMove(MoveRecord record) {
+        moveHistory.record(record);
     }
 
     public MoveResult requestJump(Position position) {
@@ -88,11 +89,17 @@ public final class MoveRequestHandler {
         return MoveResult.accepted();
     }
 
-    public void firePremoveIfAny(Position source) {
-        premoveManager.get(source).ifPresent(destination -> {
-            premoveManager.clear(source);
-            requestMove(source, destination);
-        });
+    /**
+     * If a premove is queued for this position, removes it from the queue and
+     * returns its destination - the caller (GameEngine) is responsible for
+     * actually firing it through requestMove(), so that a premove-triggered
+     * move goes through the exact same path (and publishes the exact same
+     * events) as any other move.
+     */
+    public Optional<Position> takeQueuedPremove(Position source) {
+        Optional<Position> destination = premoveManager.get(source);
+        destination.ifPresent(ignored -> premoveManager.clear(source));
+        return destination;
     }
 
     public List<MoveRecord> moveHistory() {
