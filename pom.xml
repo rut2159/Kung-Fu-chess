@@ -9,11 +9,11 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>kung-fu-chess-assets</module>
-        <module>kung-fu-chess-client</module>
-        <module>kung-fu-chess-core</module>
-        <module>kung-fu-chess-desktop</module>
-        <module>kung-fu-chess-server</module>
+        <module>assets</module>
+        <module>client</module>
+        <module>core</module>
+        <module>desktop</module>
+        <module>server</module>
     </modules>
 
     <properties>
@@ -82,5 +82,29 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>
