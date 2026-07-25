@@ -1,0 +1,13 @@
+Board
+wK bR .
+. . .
+. . bK
+
+jump 50 50
+click 150 50
+click 50 50
+wait 1000
+print board
+wK . .
+. . .
+. . bK

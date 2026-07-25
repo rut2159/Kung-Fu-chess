@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kung Fu Chess</title>
+<link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+
+<h1>Kung Fu Chess</h1>
+<div id="status"></div>
+<div id="waitingBanner">Waiting for opponent</div>
+<div id="roleInfo"></div>
+
+<div id="gameArea">
+    <div class="moveHistoryPanel" id="whiteHistoryPanel">
+        <div class="moveHistoryHeader">
+            <div class="playerName" id="whiteHistoryName">White</div>
+            <div class="playerScore" id="whiteHistoryScore">Score: 0</div>
+        </div>
+        <div class="moveHistoryColumnHeader"><span>TIME</span><span>MOVE</span></div>
+        <div class="moveHistoryBody" id="whiteHistoryBody"></div>
+    </div>
+
+    <div id="boardWrap">
+        <div id="gameOverBand">
+            <div id="gameOverTitle">GAME OVER</div>
+            <div id="gameOverWinner"></div>
+        </div>
+    </div>
+
+    <div class="moveHistoryPanel" id="blackHistoryPanel">
+        <div class="moveHistoryHeader">
+            <div class="playerName" id="blackHistoryName">Black</div>
+            <div class="playerScore" id="blackHistoryScore">Score: 0</div>
+        </div>
+        <div class="moveHistoryColumnHeader"><span>TIME</span><span>MOVE</span></div>
+        <div class="moveHistoryBody" id="blackHistoryBody"></div>
+    </div>
+</div>
+
+<img id="dragGhost" alt="">
+<div id="rejectionToast"></div>
+
+<audio id="soundMove" src="sounds/move.wav" preload="auto"></audio>
+<audio id="soundCapture" src="sounds/capture.wav" preload="auto"></audio>
+<audio id="soundIllegal" src="sounds/illegal_move.wav" preload="auto"></audio>
+<audio id="soundGameOver" src="sounds/game_over.wav" preload="auto"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

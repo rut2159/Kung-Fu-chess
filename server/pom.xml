@@ -1,0 +1,99 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.kungfuchess</groupId>
+        <artifactId>kung-fu-chess-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>server</artifactId>
+    <packaging>jar</packaging>
+
+    <properties>
+        <spring-boot.version>4.1.0</spring-boot.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.kungfuchess</groupId>
+            <artifactId>kung-fu-chess-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kungfuchess</groupId>
+            <artifactId>kung-fu-chess-assets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kungfuchess</groupId>
+            <artifactId>kung-fu-chess-client</artifactId>
+        </dependency>
+
+        <!-- spring-boot-starter-websocket pulls in spring-messaging + spring-websocket,
+             which together provide STOMP support (@EnableWebSocketMessageBroker) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- JdbcClient (Data Access layer) + the SQLite driver it needs (Storage layer) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.53.2.0</version>
+        </dependency>
+
+        <!-- BCryptPasswordEncoder only - not the full Spring Security framework,
+             which would add filters/login pages we don't need for this scope -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                Without the BOM's pluginManagement (which only spring-boot-starter-parent
+                provides), we must pin this plugin's version ourselves.
+                This plugin repackages the plain jar into an executable "fat jar"
+                (java -jar kung-fu-chess-server.jar) and provides `mvn spring-boot:run`.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
