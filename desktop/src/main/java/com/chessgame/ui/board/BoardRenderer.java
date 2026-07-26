@@ -7,6 +7,10 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * אחראית אך ורק על בניית תמונת-הפריים לרינדור, כולל "הצמדת" הכלי-הנגרר
+ * לעכבר. לא יודעת כלום על קלט-עכבר גולמי או Swing panels/listeners.
+ */
 final class BoardRenderer {
     private final UiMapper uiMapper;
     private final RenderUI renderUI;
@@ -27,6 +31,16 @@ final class BoardRenderer {
         return renderUI.renderNewFrame(toRender);
     }
 
+    /**
+     * מחליפה את מיקום-התצוגה של הכלי הנגרר בלבד, כך שהוא "נצמד" לעכבר - שאר
+     * הכלים לא מושפעים. חשוב: הציור (drawPiece) ממקם את הפינה השמאלית-
+     * עליונה של הספרייט בקואורדינטה שמחזירים כאן - לכן מזיזים אחורה חצי
+     * משבצת בכל ציר, כדי שהמרכז של הכלי (לא הפינה שלו) ייצמד בפועל לעכבר.
+     *
+     * חשוב עוד יותר: קרוב לקצה הימני/תחתון של הלוח, ה"מרכוז" הזה יכול
+     * לדחוף את הספרייט מעבר לגבול תמונת-הלוח - לכן חובה לצבוט (clamp)
+     * את המיקום כך שהוא לעולם לא יגרום לחריגה.
+     */
     private GameSnapshot withDraggedPieceFollowingCursor(GameSnapshot snapshot, BoardGeometry geometry, BoardDragHandler dragHandler) {
         Point dragPixel = dragHandler.dragPixel();
         double fractionalRow = ((double) dragPixel.y - geometry.cellSize() / 2.0) / geometry.cellSize();

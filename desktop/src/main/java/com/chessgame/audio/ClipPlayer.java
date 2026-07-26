@@ -9,8 +9,20 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * Plays a single WAV resource from the classpath. Knows nothing about chess,
+ * moves, or events - only "how" to play a sound file.
+ *
+ * Playback failures (no audio device available, missing file, unsupported
+ * format) are logged and swallowed rather than thrown: a missing sound
+ * should never crash the game.
+ */
 public final class ClipPlayer implements SoundPlayer {
 
+    /**
+     * Plays the WAV file at the given classpath location, e.g. "/sounds/move.wav".
+     * Returns immediately; playback happens asynchronously.
+     */
     @Override
     public void play(String classpathResource) {
         try (InputStream rawStream = ClipPlayer.class.getResourceAsStream(classpathResource)) {

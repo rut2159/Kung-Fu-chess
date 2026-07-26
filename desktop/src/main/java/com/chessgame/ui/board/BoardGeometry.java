@@ -1,5 +1,9 @@
 package com.chessgame.ui.board;
 
+/**
+ * גיאומטריית-הלוח בפיקסלים (מיקום/גודל) - חישוב טהור, בלי שום תלות
+ * ב-Swing מעבר לגדלים המספריים שהיא מקבלת.
+ */
 record BoardGeometry(int boardSize, int offsetX, int offsetY, int cellSize) {
     private static final double MARGIN_PERCENT = 0.06;
 

@@ -40,6 +40,7 @@ public final class GameService {
     private static final String GAME_STATE_TOPIC = "/topic/game";
     private static final String MOVE_HISTORY_TOPIC = "/topic/moves";
 
+    /** מעבר לזה, הטיקים מצטברים מהר יותר משאפשר לעכל - עדיף לוותר על טיק מאשר לתפוח בלי גבול. */
     private static final int MAX_QUEUED_TICKS = 20;
 
     private final GameSession session;
@@ -51,6 +52,7 @@ public final class GameService {
     private final ExecutorService gameThread = Executors.newSingleThreadExecutor();
     private final AtomicInteger queuedTicks = new AtomicInteger();
 
+    /** המצב האחרון ששודר בפועל - כדי לא לשדר שוב בדיוק את אותו הדבר. */
     private GameStateMessage lastBroadcast;
 
     @Autowired
@@ -113,6 +115,10 @@ public final class GameService {
         });
     }
 
+    /**
+     * התקדמות זמן סינכרונית: מחכה לסיום. משמשת טסטים וכל מי שצריך ודאות
+     * שהזמן באמת התקדם לפני ההמשך.
+     */
     public void advanceTimeAndBroadcast(int milliseconds) {
         submit(() -> {
             session.gameEngine.wait(milliseconds);
@@ -121,6 +127,18 @@ public final class GameService {
         });
     }
 
+    /**
+     * פעימת השעון מה-scheduler. במכוון *לא* מחכה לתוצאה, בשונה מכל שאר
+     * הפעולות כאן:
+     *
+     * הקריאה מגיעה מה-thread של @Scheduled, וקודם היא חסמה אותו עד שהטיק
+     * הסתיים. כל האטה בצד השני - לקוח איטי, תור הודעות מלא - הקפיאה את
+     * שעון המשחק לכל המשתתפים. מכיוון שה-executor הוא חד-threadי, הסדר
+     * בין הטיקים נשמר גם בלי להמתין.
+     *
+     * חריגה בתוך טיק אחד גם היא לא מפילה כלום: היא נרשמת ליומן, והטיק
+     * הבא ממשיך כרגיל - טיק שנופל בשקט לא ישתיק את השעון.
+     */
     public void tick(int milliseconds) {
         if (queuedTicks.get() >= MAX_QUEUED_TICKS) {
             log.warn("game thread is falling behind - dropping a tick");
@@ -169,6 +187,18 @@ public final class GameService {
         return GameStateMessage.from(session.gameEngine.snapshot(null), white, black, whiteScore, blackScore);
     }
 
+    /**
+     * משדרת מצב רק אם הוא באמת השתנה מאז השידור הקודם.
+     *
+     * קודם שודר מצב מלא 20 פעמים בשנייה תמיד, גם כשאף כלי לא זז. הודעה
+     * מלאה היא בערך 6KB, ואחרי הקידוד של SockJS (שמכפיל כמעט הכל בגלל
+     * מרכאות מוברחות) זה קרוב ל-12KB - כלומר ~240KB לשנייה לכל לקוח, על
+     * לוח שעומד לגמרי במקום. מספיקות כשתי שניות של האטה אצל הלקוח כדי
+     * למלא את חוצץ ה-512KB, ואז השרת מנתק אותו והמשחק "נתקע" על המסך.
+     *
+     * GameStateMessage ו-PieceDto הם records, כך שההשוואה היא לפי ערך.
+     * בלוח דומם ההודעה זהה בדיוק לקודמתה - ואז לא נשלח כלום.
+     */
     private void broadcastState() {
         GameStateMessage state = currentState();
         if (state.equals(lastBroadcast)) {
@@ -178,6 +208,10 @@ public final class GameService {
         messagingTemplate.convertAndSend(GAME_STATE_TOPIC, state);
     }
 
+    /**
+     * שידור כפוי, בלי בדיקת שינוי - ללקוח שרק עכשיו התחבר אין מצב קודם
+     * להשוות אליו, והוא חייב לקבל תמונה מלאה גם אם הלוח לא זז מאז.
+     */
     private void broadcastStateToAll() {
         lastBroadcast = null;
         broadcastState();
@@ -195,6 +229,14 @@ public final class GameService {
                 record.timestamp());
     }
 
+    /**
+     * כל היסטוריית המהלכים מתחילת המשחק.
+     *
+     * /topic/moves משדר כל מהלך פעם אחת בלבד, ברגע שהוא קורה. לקוח שמתחבר
+     * אחר כך - או שרק רענן את הדף, או שהתחבר מחדש אחרי ניתוק - מפספס את
+     * כל מה שכבר היה, והטבלה אצלו נשארת ריקה. המנוע שומר את ההיסטוריה
+     * המלאה ממילא, אז הלקוח פשוט צריך דרך לבקש אותה.
+     */
     public List<MoveHistoryEntryMessage> moveHistory() {
         return submit(() -> session.gameEngine.moveHistory().stream()
                 .map(this::toEntry)
@@ -210,6 +252,13 @@ public final class GameService {
                 winner);
     }
 
+    /**
+     * כל שינוי-מצב עובר דרך ה-thread היחיד הזה, כך שפקודות שחקנים ופעימת
+     * השעון לא יכולות להתנגש. אזהרה: אסור בתכלית האיסור לקרוא ל-submit
+     * מתוך קוד שכבר רץ על ה-thread הזה - למשל מתוך subscriber של ה-event
+     * bus. הקריאה תמתין לתור שהיא עצמה חוסמת, וזה deadlock קבוע ששום דבר
+     * לא מתאושש ממנו.
+     */
     private <T> T submit(Callable<T> task) {
         try {
             return gameThread.submit(task).get();

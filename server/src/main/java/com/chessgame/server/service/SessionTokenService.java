@@ -9,7 +9,14 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-
+/**
+ * טוקנים לזיהוי מי באמת עומד מאחורי חיבור ה-STOMP.
+ *
+ * הגרסה הקודמת החזיקה מפה שגדלה לנצח: טוקן שהונפק פעם אחת נשאר תקף עד
+ * שהשרת נופל. זה גם דליפת זיכרון איטית (כל התחברות מוסיפה רשומה שלא
+ * נמחקת אף פעם) וגם בעיית אבטחה - טוקן שדלף, למשל מה-URL של דף המשחק,
+ * לא פג לעולם. עכשיו לכל טוקן יש תפוגה, ורשומות שפג תוקפן מפונות.
+ */
 @Service
 public class SessionTokenService {
 
@@ -45,6 +52,7 @@ public class SessionTokenService {
         return Optional.of(entry.username());
     }
 
+    /** ביטול מפורש - לכפתור התנתקות, וכל מקום שבו טוקן צריך להפסיק להיות תקף מיד. */
     public void revoke(String token) {
         if (token != null) {
             entriesByToken.remove(token);

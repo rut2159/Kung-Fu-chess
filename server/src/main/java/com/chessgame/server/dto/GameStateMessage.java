@@ -15,6 +15,12 @@ public record GameStateMessage(
         int whiteScore,
         int blackScore
 ) {
+
+    /**
+     * שלוש ספרות אחרי הנקודה זה כבר הרבה מתחת לגודל פיקסל על המסך, אבל
+     * ההבדל בתעבורה גדול: double גולמי מסתדר כ-"5.123456789012345" - 17
+     * תווים במקום 5, כפול שלושה שדות כפול 32 כלים, 20 פעמים בשנייה.
+     */
     private static double round(double value) {
         return Math.round(value * 1000.0) / 1000.0;
     }
