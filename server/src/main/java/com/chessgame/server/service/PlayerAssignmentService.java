@@ -1,5 +1,6 @@
 package com.chessgame.server.service;
 
+import com.chessgame.model.Piece;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -9,7 +10,21 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class PlayerAssignmentService {
 
-    public enum Role { WHITE, BLACK, VIEWER }
+    public enum Role {
+        WHITE(Piece.Color.WHITE),
+        BLACK(Piece.Color.BLACK),
+        VIEWER(null);
+
+        private final Piece.Color color;
+
+        Role(Piece.Color color) {
+            this.color = color;
+        }
+
+        public boolean owns(Piece.Color pieceColor) {
+            return color != null && color == pieceColor;
+        }
+    }
 
     private final Map<String, String> usernameBySession = new ConcurrentHashMap<>();
     private final Map<String, Role> roleByUsername = new ConcurrentHashMap<>();

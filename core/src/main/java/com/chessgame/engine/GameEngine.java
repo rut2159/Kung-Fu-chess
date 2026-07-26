@@ -21,6 +21,7 @@ import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 import com.chessgame.realtime.ArrivalOutcome;
 import com.chessgame.realtime.RealTimeArbiter;
+import com.chessgame.realtime.airborne.AirborneCapture;
 import com.chessgame.realtime.motion.Motion;
 import com.chessgame.rules.MoveReason;
 import com.chessgame.rules.RuleEngine;
@@ -104,6 +105,15 @@ public final class GameEngine {
                     motion.piece().color(), outcome.movedKind(),
                     motion.source(), motion.destination(),
                     outcome.captured(), realTimeArbiter.gameClock());
+            moveRequestHandler.recordCompletedMove(record);
+            eventBus.publish(new MoveMadeEvent(record));
+        }
+
+        for (AirborneCapture capture : realTimeArbiter.justResolvedAirborneCaptures()) {
+            MoveRecord record = new MoveRecord(
+                    capture.defender().color(), capture.defender().kind(),
+                    capture.cell(), capture.cell(),
+                    true, true, capture.timestamp());
             moveRequestHandler.recordCompletedMove(record);
             eventBus.publish(new MoveMadeEvent(record));
         }

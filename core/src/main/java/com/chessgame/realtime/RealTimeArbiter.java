@@ -4,6 +4,7 @@ import com.chessgame.model.Board;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 import com.chessgame.realtime.airborne.AirborneManager;
+import com.chessgame.realtime.airborne.AirborneCapture;
 import com.chessgame.realtime.airborne.JumpAwareArrivalResolver;
 import com.chessgame.realtime.collision.CollisionManager;
 import com.chessgame.realtime.cooldown.CooldownManager;
@@ -27,6 +28,7 @@ public final class RealTimeArbiter {
     private long gameClock = 0;
     private List<Position> justExpiredCooldownPositions = List.of();
     private List<ArrivalOutcome> justResolvedArrivals = List.of();
+    private List<AirborneCapture> justResolvedAirborneCaptures = List.of();
 
     public RealTimeArbiter(Board board) {
         this(board, SpeedConfig.STANDARD);
@@ -37,7 +39,7 @@ public final class RealTimeArbiter {
         this.speedConfig = speedConfig;
         this.cooldownManager = new CooldownManager(speedConfig);
         this.collisionManager = new CollisionManager(board, motionManager, speedConfig.cellDurationMs());
-        this.commonRouteResolver = new ArrivalResolver(board);
+        this.commonRouteResolver = new ArrivalResolver(board, motionManager);
         this.arrivalResolver = new JumpAwareArrivalResolver(board, commonRouteResolver, airborneManager);
     }
 
@@ -52,14 +54,16 @@ public final class RealTimeArbiter {
         return cooldownManager.isPieceCoolingDown(position);
     }
 
-    /** התאים שהקירור שלהם הסתיים בדיוק בקריאה האחרונה ל-advanceTime - לשימוש ע"י premove. */
     public List<Position> justExpiredCooldownPositions() {
         return justExpiredCooldownPositions;
     }
 
-    /** מה שבאמת קרה לכל תזוזה שהגיעה ליעדה בקריאה האחרונה ל-advanceTime - האמת היחידה לגבי capture. */
     public List<ArrivalOutcome> justResolvedArrivals() {
         return justResolvedArrivals;
+    }
+
+    public List<AirborneCapture> justResolvedAirborneCaptures() {
+        return justResolvedAirborneCaptures;
     }
 
     public long gameClock() {
@@ -108,6 +112,7 @@ public final class RealTimeArbiter {
         boolean kingCaptured = false;
         List<Position> accumulatedExpired = new ArrayList<>();
         List<ArrivalOutcome> accumulatedArrivals = new ArrayList<>();
+        List<AirborneCapture> accumulatedAirborneCaptures = new ArrayList<>();
         int remaining = milliseconds;
 
         while (remaining > 0) {
@@ -115,11 +120,13 @@ public final class RealTimeArbiter {
             kingCaptured |= advanceTimeStep(step);
             accumulatedExpired.addAll(justExpiredCooldownPositions);
             accumulatedArrivals.addAll(justResolvedArrivals);
+            accumulatedAirborneCaptures.addAll(justResolvedAirborneCaptures);
             remaining -= step;
         }
 
         justExpiredCooldownPositions = accumulatedExpired;
         justResolvedArrivals = accumulatedArrivals;
+        justResolvedAirborneCaptures = accumulatedAirborneCaptures;
         return kingCaptured;
     }
 
@@ -131,7 +138,10 @@ public final class RealTimeArbiter {
         List<Motion> arrived = motionManager.collectArrived(gameClock);
         List<ArrivalOutcome> outcomes = arrivalResolver.resolveArrivals(arrived);
         justResolvedArrivals = outcomes;
+        justResolvedAirborneCaptures = arrivalResolver.justResolvedAirborneCaptures();
         boolean kingCapturedByArrival = outcomes.stream().anyMatch(ArrivalOutcome::kingCaptured);
+        boolean kingCapturedByJump =
+                justResolvedAirborneCaptures.stream().anyMatch(AirborneCapture::kingCaptured);
 
         for (Motion motion : arrived) {
             if (motion.piece().state() == Piece.State.IDLE) {
@@ -148,6 +158,6 @@ public final class RealTimeArbiter {
 
         justExpiredCooldownPositions = cooldownManager.clearExpiredCooldowns(gameClock);
 
-        return kingCapturedByCollision || kingCapturedByArrival;
+        return kingCapturedByCollision || kingCapturedByArrival || kingCapturedByJump;
     }
 }

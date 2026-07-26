@@ -2,6 +2,7 @@ package com.chessgame.ui.board;
 
 import com.chessgame.DesktopGameSession;
 import com.chessgame.io.BoardParser;
+import com.chessgame.io.StandardBoard;
 import com.chessgame.model.Board;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BoardControllerTest {
-
     private DesktopGameSession sessionFor(Board board) {
         return new DesktopGameSession(board);
     }
@@ -76,7 +76,7 @@ class BoardControllerTest {
                 controller.panel(), java.awt.event.MouseEvent.MOUSE_RELEASED, System.currentTimeMillis(), 0, 250, 50, 1, false);
         for (java.awt.event.MouseListener l : mouseListeners) l.mouseReleased(release);
 
-        session.gameEngine.wait(3000); // 2 משבצות = 2000ms, קצת רזרבה
+        session.gameEngine.wait(3000);
 
         assertNull(board.pieceAt(new Position(0, 0)), "הרוק כבר לא במקור");
         assertNotNull(board.pieceAt(new Position(0, 2)), "הרוק הגיע ליעד שנגרר אליו");
@@ -119,16 +119,7 @@ class BoardControllerTest {
      */
     @Test
     void draggingToTheExtremeEdgeOfTheBoard_neverThrows() throws Exception {
-        Board board = new BoardParser().parse(
-                "bR bN bB bQ bK bB bN bR\n" +
-                        "bP bP bP bP bP bP bP bP\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        "wP wP wP wP wP wP wP wP\n" +
-                        "wR wN wB wQ wK wB wN wR"
-        );
+        Board board = StandardBoard.create();
         DesktopGameSession session = sessionFor(board);
         BoardController controller = new BoardController(session, "P2", "P1");
 
@@ -142,7 +133,7 @@ class BoardControllerTest {
 
         java.awt.event.MouseEvent press = new java.awt.event.MouseEvent(
                 controller.panel(), java.awt.event.MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, 750, 750, 1, false);
-        for (java.awt.event.MouseListener l : mouseListeners) l.mousePressed(press); // תופסים את הרוק בפינה h1
+        for (java.awt.event.MouseListener l : mouseListeners) l.mousePressed(press);
 
         int[][] extremePoints = {{799, 799}, {798, 750}, {750, 798}, {0, 0}, {1, 1}};
         for (int[] p : extremePoints) {

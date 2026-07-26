@@ -1,11 +1,6 @@
 package com.chessgame.ui.board;
 
-/**
- * גיאומטריית-הלוח בפיקסלים (מיקום/גודל) - חישוב טהור, בלי שום תלות
- * ב-Swing מעבר לגדלים המספריים שהיא מקבלת.
- */
 record BoardGeometry(int boardSize, int offsetX, int offsetY, int cellSize) {
-
     private static final double MARGIN_PERCENT = 0.06;
 
     static BoardGeometry compute(int panelWidth, int panelHeight, int cols) {
@@ -22,7 +17,6 @@ record BoardGeometry(int boardSize, int offsetX, int offsetY, int cellSize) {
         return new BoardGeometry(boardSize, offsetX, offsetY, cellSize);
     }
 
-    /** האם קואורדינטה יחסית-ללוח (אחרי הפחתת offset) בכלל בתוך גבולות הלוח. */
     boolean containsRelative(int relX, int relY) {
         return relX >= 0 && relY >= 0 && relX < boardSize && relY < boardSize;
     }

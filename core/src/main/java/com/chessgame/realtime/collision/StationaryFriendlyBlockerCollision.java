@@ -6,13 +6,6 @@ import com.chessgame.model.Position;
 import com.chessgame.realtime.motion.Motion;
 import com.chessgame.realtime.motion.MotionManager;
 
-/**
- * כלי נע שמגיע לתא שבו יושב כלי ידידותי דומם (לא בתנועה) בנתיב שלו.
- * בניגוד ל-StationaryBlockerCollision (אויב) - כאן אין לכידה: הכלי הנע
- * פשוט נעצר תא אחד לפני החוסם, בדיוק כמו ב-FriendlyMotionCollision.
- * אם החוסם כבר זז משם עד שהגיע הרגע - שום דבר לא קורה (isStillRelevant
- * יחזיר false), והתנועה המקורית פשוט ממשיכה כרגיל.
- */
 final class StationaryFriendlyBlockerCollision implements CollisionCandidate {
     private final long eventTime;
     private final Motion movingMotion;
@@ -36,7 +29,9 @@ final class StationaryFriendlyBlockerCollision implements CollisionCandidate {
 
     @Override
     public boolean isStillRelevant(MotionManager motionManager, Board board) {
-        return motionManager.isStillActive(movingMotion) && board.pieceAt(blockedCell) == blockerPiece;
+        return motionManager.isStillActive(movingMotion)
+                && board.pieceAt(blockedCell) == blockerPiece
+                && !motionManager.isPieceMoving(blockedCell);
     }
 
     @Override

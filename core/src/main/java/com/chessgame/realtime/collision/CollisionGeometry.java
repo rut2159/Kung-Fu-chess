@@ -6,12 +6,9 @@ import com.chessgame.realtime.motion.Motion;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * עזרי-נתיב בדידים (רשימת-תאים) - משמשים את ההתנגשות הידידותית (שני
- * כלים נעים) ואת חוסמים-דוממים (אויב/ידידותי). לזיהוי-רדיוס-רציף בין
- * שני כלי-אויב ראו EnemyProximityDetector - שאלה גיאומטרית שונה לגמרי.
- */
 final class CollisionGeometry {
+    private static final int MAX_PATH_LENGTH = 1024;
+
     private CollisionGeometry() {}
 
     static List<Position> pathExcludingDestination(Position source, Position destination) {
@@ -19,14 +16,6 @@ final class CollisionGeometry {
         return full.subList(0, full.size() - 1);
     }
 
-    /**
-     * הנתיב של כלי, בלי משבצת-המוצא שלו עצמו. חשוב עבור findSharedCell:
-     * כלי ש"עוזב" את המשבצת שלו נחשב, לפי fullPathInclusive, כמי ש"הגיע"
-     * אליה מיידית (מרחק 0, ברגע ההתחלה) - עובדה טריוויאלית שגורמת לכל כלי
-     * אחר שעובר דרך אותה משבצת (אפילו הרבה אחרי שהראשון כבר עזב אותה
-     * בפועל) להיראות כאילו "הגיע מאוחר יותר" ולכן נעצר/מבוטל, גם כשהראשון
-     * כבר מזמן לא שם. לכן, משבצת-המוצא לא נחשבת "חוסמת" בכלל.
-     */
     private static List<Position> pathExcludingSource(Position source, Position destination) {
         List<Position> full = fullPathInclusive(source, destination);
         return full.subList(1, full.size());
@@ -59,14 +48,7 @@ final class CollisionGeometry {
         return motion.startTime() + distance * cellDurationMs;
     }
 
-    /**
-     * האם המסלול-העתידי-בפועל של הכלי (לא כולל את משבצת-המוצא הטריוויאלית
-     * שלו) עובר דרך התא הזה. באג דומה למה שתיקנו ב-findSharedCell: בלי
-     * להוציא את המוצא, כל כלי "עובר" (טריוויאלית) דרך המשבצת שהוא עצמו
-     * עומד בה - מה שגרם ב-FriendlyMotionCollision.resolve() לקטוע-מחדש
-     * בטעות את הכלי ה"ממשיך" בחזרה למשבצת-המוצא שלו-עצמו, כשה"רחוק"
-     * נעצר בדיוק שם.
-     */
+
     static boolean pathPassesThrough(Motion motion, Position cell) {
         return pathExcludingSource(motion.source(), motion.destination()).contains(cell);
     }
@@ -82,7 +64,15 @@ final class CollisionGeometry {
         int stepCol = Integer.compare(to.col(), from.col());
         List<Position> path = new ArrayList<>();
         int row = from.row(), col = from.col();
+        int guard = 0;
         while (row != to.row() || col != to.col()) {
+            // רשת ביטחון: המסלול חייב להיות ישר או אלכסוני מושלם, אחרת
+            // row/col לעולם לא יגיעו יחד ליעד והלולאה תרוץ עד אינסוף -
+            // כלומר קיפאון מוחלט ובלתי הפיך של השרת. עדיף להתפוצץ ברעש.
+            if (++guard > MAX_PATH_LENGTH) {
+                throw new IllegalArgumentException(
+                        "Non-linear path is not supported: " + from + " -> " + to);
+            }
             path.add(new Position(row, col));
             row += stepRow; col += stepCol;
         }

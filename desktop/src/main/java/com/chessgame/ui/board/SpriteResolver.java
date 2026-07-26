@@ -31,18 +31,7 @@ final class SpriteResolver {
     }
 
     private String pieceFolderCode(Piece.Color color, Piece.Kind kind) {
-        String kindLetter;
-        switch (kind) {
-            case KING: kindLetter = "K"; break;
-            case QUEEN: kindLetter = "Q"; break;
-            case ROOK: kindLetter = "R"; break;
-            case BISHOP: kindLetter = "B"; break;
-            case KNIGHT: kindLetter = "N"; break;
-            case PAWN: kindLetter = "P"; break;
-            default: throw new IllegalArgumentException("Unknown piece kind: " + kind);
-        }
-        String colorLetter = (color == Piece.Color.WHITE) ? "W" : "B";
-        return kindLetter + colorLetter;
+        return String.valueOf(kind.letter()) + Character.toUpperCase(color.letter());
     }
 
     private int currentFrameIndex(Piece.State state) {

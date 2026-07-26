@@ -18,7 +18,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RatingServiceTest {
-
     @Mock
     private UserRepository userRepository;
 
@@ -40,7 +39,7 @@ class RatingServiceTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(new User(1L, "alice", "hash", 1200)));
         when(userRepository.findByUsername("bob")).thenReturn(Optional.of(new User(2L, "bob", "hash", 1200)));
 
-        ratingService.applyGameResult("alice", "bob", null); // no winner = draw
+        ratingService.applyGameResult("alice", "bob", null);
 
         // Equal ratings + draw => expected score was already 0.5, so no real change either way
         verify(userRepository).updateRating(eq("alice"), anyInt());

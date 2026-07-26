@@ -14,7 +14,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RenderUITest {
-
     private UiMapper mapper;
     private RenderUI renderUI;
 
@@ -31,7 +30,7 @@ class RenderUITest {
 
         BufferedImage image = renderUI.renderNewFrame(snapshot);
 
-        assertEquals(320, image.getWidth());  // 8 * 40
+        assertEquals(320, image.getWidth());
         assertEquals(320, image.getHeight());
     }
 
@@ -42,7 +41,7 @@ class RenderUITest {
 
         BufferedImage image = renderUI.renderNewFrame(snapshot);
 
-        assertEquals(160, image.getWidth());  // 8 * 20
+        assertEquals(160, image.getWidth());
         assertEquals(160, image.getHeight());
     }
 

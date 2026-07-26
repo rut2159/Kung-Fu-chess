@@ -27,7 +27,6 @@ final class BoardDragHandler {
         return dragSource != null;
     }
 
-    /** "מרימים" את הכלי - אם יש כלי בתא, מתחילים לעקוב אחרי העכבר. */
     void beginDrag(Point relativePixel, int cellSizePx) {
         controller.setCellSizePx(cellSizePx);
         Position picked = controller.beginDrag(relativePixel.x, relativePixel.y);
@@ -38,7 +37,6 @@ final class BoardDragHandler {
         }
     }
 
-    /** בזמן שהעכבר לחוץ וזז - רק מעדכנים את מיקום-התצוגה, לא נוגעים בלוגיקת המשחק. */
     void updateDrag(Point relativePixel) {
         if (dragSource == null) {
             return;
@@ -48,7 +46,6 @@ final class BoardDragHandler {
         }
     }
 
-    /** "מניחים" את הכלי - מבקשים את המהלך האמיתי מהתא-המקורי אל תא-השחרור. */
     void endDrag(Point relativePixel) {
         if (dragSource == null) {
             return;
@@ -62,7 +59,6 @@ final class BoardDragHandler {
         dragPixel = null;
     }
 
-    /** לחיצה כפולה על אותו כלי - קפיצה-במקום (כמו שכבר ממומש ב-Controller.jump). */
     void doubleClick(Point relativePixel, int cellSizePx) {
         if (relativePixel == null) {
             return;

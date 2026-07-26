@@ -5,10 +5,6 @@ import java.awt.image.BufferedImage;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * אחראית אך ורק על מטמון תמונות-שכבר-נטענו (לפי נתיב+גודל) - כדי לא
- * לטעון-ולשנות-גודל אותה תמונה בכל פריים מחדש. thread-safe (ConcurrentHashMap).
- */
 final class ImageCache {
     private final Map<String, BufferedImage> cache = new ConcurrentHashMap<>();
 

@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GameEngineTest {
-
     private Board board;
     private GameState gameState;
     private GameEngine engine;
@@ -58,7 +57,7 @@ class GameEngineTest {
 
     @Test
     void capturingTheEnemyKing_setsGameOver() {
-        engine.requestMove(new Position(0, 0), new Position(0, 1)); // wR -> bK
+        engine.requestMove(new Position(0, 0), new Position(0, 1));
         assertFalse(gameState.isGameOver());
 
         engine.wait(1000);
@@ -90,6 +89,6 @@ class GameEngineTest {
 
         assertEquals(new Position(0, 0), snapshot.selectedCell());
         assertFalse(snapshot.isGameOver());
-        assertEquals(2, snapshot.pieces().size()); // wR + bK
+        assertEquals(2, snapshot.pieces().size());
     }
 }

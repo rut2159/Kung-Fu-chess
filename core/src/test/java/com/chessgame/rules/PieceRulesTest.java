@@ -11,7 +11,6 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PieceRulesTest {
-
     private final PieceRules pieceRules = new PieceRules();
 
     @Test
@@ -21,7 +20,6 @@ class PieceRulesTest {
 
         Set<Position> destinations = pieceRules.legalDestinations(board, rook);
 
-        // אי-אפשר לבחור לנחות ממש על הכלי הידידותי...
         assertFalse(destinations.contains(new Position(0, 1)));
         // ...אבל כן אפשר לבחור יעד מעבר אליו - הוא אולי יזוז בזמן (חוק Kung Fu Chess).
         assertTrue(destinations.contains(new Position(0, 2)));

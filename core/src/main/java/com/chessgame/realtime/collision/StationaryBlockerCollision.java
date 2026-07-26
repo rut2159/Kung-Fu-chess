@@ -26,13 +26,16 @@ final class StationaryBlockerCollision implements CollisionCandidate {
 
     @Override
     public boolean isStillRelevant(MotionManager motionManager, Board board) {
-        return motionManager.isStillActive(movingMotion) && board.pieceAt(cell) == stationaryPiece;
+        return motionManager.isStillActive(movingMotion)
+                && board.pieceAt(cell) == stationaryPiece
+                && !motionManager.isPieceMoving(cell);
     }
 
     @Override
     public boolean resolve(Board board, MotionManager motionManager) {
         board.removePiece(cell);
         stationaryPiece.setState(Piece.State.CAPTURED);
+        motionManager.cancelMotionOf(stationaryPiece);
         return stationaryPiece.kind() == Piece.Kind.KING;
     }
 }

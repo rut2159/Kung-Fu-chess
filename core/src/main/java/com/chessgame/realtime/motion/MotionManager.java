@@ -35,6 +35,17 @@ public final class MotionManager {
         activeMotions.remove(motion);
     }
 
+    /**
+     * מבטלת כל תנועה פעילה של הכלי הזה. חייבת להיקרא בכל פעם שכלי נהרג -
+     * אחרת התנועה שלו נשארת "חיה" אחרי מותו, ובזמן ההגעה שלה היא מזיזה את
+     * מי שיושב במשבצת המוצא שלו (בדרך כלל: את הכלי שהרג אותו) ליעד שלו,
+     * או זורקת IllegalStateException אם המשבצת התרוקנה.
+     * זיהוי לפי זהות-אובייקט ולא לפי מיקום, כי המיקום כבר לא אמין בשלב הזה.
+     */
+    public void cancelMotionOf(Piece piece) {
+        activeMotions.removeIf(motion -> motion.piece() == piece);
+    }
+
     public boolean isStillActive(Motion motion) {
         return activeMotions.contains(motion);
     }

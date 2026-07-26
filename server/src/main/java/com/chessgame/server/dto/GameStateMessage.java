@@ -15,6 +15,9 @@ public record GameStateMessage(
         int whiteScore,
         int blackScore
 ) {
+    private static double round(double value) {
+        return Math.round(value * 1000.0) / 1000.0;
+    }
 
     public static GameStateMessage from(GameSnapshot snapshot, String whiteUsername, String blackUsername,
                                          int whiteScore, int blackScore) {
@@ -25,10 +28,10 @@ public record GameStateMessage(
                         piece.kind().name(),
                         piece.position().row(),
                         piece.position().col(),
-                        piece.displayRow(),
-                        piece.displayCol(),
+                        round(piece.displayRow()),
+                        round(piece.displayCol()),
                         piece.state().name(),
-                        piece.cooldownRemaining(),
+                        round(piece.cooldownRemaining()),
                         piece.hasPremove()
                 ))
                 .toList();

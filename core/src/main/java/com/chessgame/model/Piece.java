@@ -1,19 +1,64 @@
 package com.chessgame.model;
 
+import java.util.Optional;
+
 public final class Piece {
 
     public enum Color {
-        WHITE, BLACK
+        WHITE('w'),
+        BLACK('b');
+
+        private final char letter;
+
+        Color(char letter) {
+            this.letter = letter;
+        }
+
+        public char letter() {
+            return letter;
+        }
+
+        public static Optional<Color> fromLetter(char letter) {
+            for (Color color : values()) {
+                if (color.letter == letter) {
+                    return Optional.of(color);
+                }
+            }
+            return Optional.empty();
+        }
     }
 
     public enum Kind {
-        KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN
+        KING('K'),
+        QUEEN('Q'),
+        ROOK('R'),
+        BISHOP('B'),
+        KNIGHT('N'),
+        PAWN('P');
+
+        private final char letter;
+
+        Kind(char letter) {
+            this.letter = letter;
+        }
+
+        public char letter() {
+            return letter;
+        }
+
+        public static Optional<Kind> fromLetter(char letter) {
+            for (Kind kind : values()) {
+                if (kind.letter == letter) {
+                    return Optional.of(kind);
+                }
+            }
+            return Optional.empty();
+        }
     }
 
     public enum State {
         IDLE, MOVING, AIRBORNE, COOLDOWN_LONG, COOLDOWN_SHORT, CAPTURED
     }
-
 
     private final String id;
     private final Color color;

@@ -4,6 +4,7 @@ import com.chessgame.engine.moves.MoveResult;
 import com.chessgame.server.dto.JoinCommand;
 import com.chessgame.server.dto.JumpCommand;
 import com.chessgame.server.dto.MoveCommand;
+import com.chessgame.server.dto.MoveHistoryEntryMessage;
 import com.chessgame.server.dto.MoveRejectedMessage;
 import com.chessgame.server.service.GameService;
 import com.chessgame.server.service.PlayerAssignmentService;
@@ -12,6 +13,10 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.util.List;
 
 @Controller
 public class GameController {
@@ -29,6 +34,19 @@ public class GameController {
         this.playerAssignmentService = playerAssignmentService;
         this.sessionTokenService = sessionTokenService;
         this.messagingTemplate = messagingTemplate;
+    }
+
+    /**
+     * תמונת מצב של כל היסטוריית המהלכים.
+     *
+     * הלקוח מושך אותה מיד אחרי שהוא מתחבר - גם בטעינה ראשונה, גם אחרי
+     * F5, וגם אחרי כל חיבור-מחדש אוטומטי. בלי זה, /topic/moves לבדו
+     * מספק רק מהלכים שקורים מכאן והלאה, וכל מה שהיה קודם נעלם מהטבלה.
+     */
+    @GetMapping("/api/moves")
+    @ResponseBody
+    public List<MoveHistoryEntryMessage> moveHistory() {
+        return gameService.moveHistory();
     }
 
     @MessageMapping("/join")

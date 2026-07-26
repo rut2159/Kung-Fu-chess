@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SoundSubscriberTest {
 
-    /** Records which classpath resources were "played", without touching real audio hardware. */
     private static final class FakeSoundPlayer implements SoundPlayer {
         private final List<String> played = new ArrayList<>();
 

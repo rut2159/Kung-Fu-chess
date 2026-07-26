@@ -3,6 +3,7 @@ package com.chessgame.realtime;
 import com.chessgame.engine.GameEngine;
 import com.chessgame.engine.moves.MoveResult;
 import com.chessgame.io.BoardParser;
+import com.chessgame.io.StandardBoard;
 import com.chessgame.model.Board;
 import com.chessgame.model.GameState;
 import com.chessgame.model.Piece;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CollisionAndCooldownTest {
-
     private GameEngine engineFor(Board board) {
         return new GameEngine(board, new GameState(), new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
     }
@@ -175,23 +175,14 @@ class CollisionAndCooldownTest {
      */
     @Test
     void friendlyPieceCrossingThroughAnotherFriendlyPiecesJustVacatedSquare_isNotBlocked() {
-        Board board = new BoardParser().parse(
-                "bR bN bB bQ bK bB bN bR\n" +
-                        "bP bP bP bP bP bP bP bP\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        ". . . . . . . .\n" +
-                        "wP wP wP wP wP wP wP wP\n" +
-                        "wR wN wB wQ wK wB wN wR"
-        );
+        Board board = StandardBoard.create();
         GameEngine engine = engineFor(board);
 
         Position e2 = new Position(6, 4), e3 = new Position(5, 4);
         Position d1 = new Position(7, 3), f3 = new Position(5, 5);
 
         engine.requestMove(e2, e3);
-        engine.requestMove(d1, f3); // מיד אחרי, בלי engine.wait ביניהם - בדיוק כמו גרירה מהירה
+        engine.requestMove(d1, f3);
 
         engine.wait(3000);
 
@@ -290,7 +281,7 @@ class CollisionAndCooldownTest {
 
         // Standard cooldown = 10 שניות, נספר מרגע ההגעה (t=1000) - אז עוד
         // 10 שניות מלאות עד שהקירור פג, ועוד 1000ms נוספות שזה ייקח למהלך
-        // עצמו (משבצת אחת) שרץ אוטומטית ברגע שהקירור נגמר.
+
         engine.wait(10000);
         engine.wait(1000);
 
@@ -314,7 +305,7 @@ class CollisionAndCooldownTest {
         GameEngine engine = engineFor(board);
 
         engine.requestMove(new Position(0, 0), new Position(0, 4));
-        engine.wait(10000); // הרבה מעבר לכל זמן רלוונטי - הפאון לא זז בכלל
+        engine.wait(10000);
 
         assertNotNull(board.pieceAt(new Position(0, 1)), "הרוק נעצר תא אחד לפני הפאון");
         assertNotNull(board.pieceAt(new Position(0, 2)), "הפאון עדיין שם - לא נפגע");
@@ -326,13 +317,13 @@ class CollisionAndCooldownTest {
         Board board = new BoardParser().parse("wR . wK . .\n. . . . .");
         GameEngine engine = engineFor(board);
 
-        engine.requestMove(new Position(0, 0), new Position(0, 4)); // 4 תאים - בדיקת-חסימה ב-(0,2) בזמן t=2000
+        engine.requestMove(new Position(0, 0), new Position(0, 4));
         engine.requestMove(new Position(0, 2), new Position(1, 2)); // המלך יורד לשורה אחרת - באמת יוצא מהמסלול (לא רק זז-קדימה-על-אותו-מסלול)
 
         // טיקים קטנים (כמו הלולאה האמיתית ב-GameWindow, כל 33ms) ולא קפיצה
         // גדולה אחת - ראו הערה בהודעה: קפיצת-זמן ענקית-אחת יכולה לגרום
         // ל-resolveDue לבדוק "האם החוסם עדיין שם" על-בסיס לוח שעדיין לא
-        // עודכן מהגעה-מוקדמת-יותר-כרונולוגית שטרם עובדה באותה קריאה.
+
         for (int i = 0; i < 20; i++) {
             engine.wait(500);
         }

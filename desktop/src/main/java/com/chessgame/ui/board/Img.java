@@ -7,28 +7,24 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 
 public class Img {
-
     private BufferedImage img;
 
-    /* ----------- load & optional resize (delegates the actual decode/resize to ImageLoader) ----------- */
     public Img read(String path,
                     Dimension targetSize,
                     boolean keepAspect,
-                    Object interpolation /*ignored*/) {
+                    Object interpolation ) {
         img = ImageLoader.load(path, targetSize, keepAspect);
         return this;
     }
 
     public Img read(String path) { return read(path, null, false, null); }
 
-    /* ----------- wrap an already-decoded image (no disk/classpath read) ----------- */
     public static Img wrap(BufferedImage image) {
         Img wrapped = new Img();
         wrapped.img = image;
         return wrapped;
     }
 
-    /* ----------- draw this image onto another ----------- */
     public void drawOn(Img other, int x, int y) {
         if (img == null || other.img == null)
             throw new IllegalStateException("Both images must be loaded.");
@@ -38,27 +34,24 @@ public class Img {
             throw new IllegalArgumentException("Patch exceeds destination bounds.");
 
         Graphics2D g = other.img.createGraphics();
-        g.setComposite(AlphaComposite.SrcOver);                               // handles alpha channel :contentReference[oaicite:3]{index=3}
-        g.drawImage(img, x, y, null);                                        // :contentReference[oaicite:4]{index=4}
+        g.setComposite(AlphaComposite.SrcOver);
+        g.drawImage(img, x, y, null);
         g.dispose();
     }
 
-    /* ----------- annotate with text ----------- */
     public void putText(String txt, int x, int y, float fontSize,
-                        Color color, int thickness /*unused in Java2D*/) {
-
+                        Color color, int thickness ) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
 
         Graphics2D g = img.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setColor(color);
-        g.setFont(img.getGraphics().getFont().deriveFont(fontSize * 12));     // simple scale
-        g.drawString(txt, x, y);                                             // :contentReference[oaicite:5]{index=5}
+        g.setFont(img.getGraphics().getFont().deriveFont(fontSize * 12));
+        g.drawString(txt, x, y);
         g.dispose();
     }
 
-    /* ----------- annotate with text, horizontally+vertically centered on (centerX, centerY) ----------- */
     public void putTextCentered(String text, int centerX, int centerY, float fontSize, Color color) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
 
@@ -78,21 +71,19 @@ public class Img {
         g.dispose();
     }
 
-    /* ----------- display in a Swing window ----------- */
     public void show() {
         if (img == null) throw new IllegalStateException("Image not loaded.");
 
         SwingUtilities.invokeLater(() -> {
             JFrame f = new JFrame("Image");
             f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.add(new JLabel(new ImageIcon(img)));                            // :contentReference[oaicite:6]{index=6}
+            f.add(new JLabel(new ImageIcon(img)));
             f.pack();
             f.setLocationRelativeTo(null);
             f.setVisible(true);
         });
     }
 
-    /* ----------- draw a filled rectangle (e.g. cell highlight) ----------- */
     public void fillRect(int x, int y, int width, int height, Color color) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
         Graphics2D g = img.createGraphics();
@@ -101,7 +92,6 @@ public class Img {
         g.dispose();
     }
 
-    /* ----------- draw a rectangle outline only (not filled) - e.g. selection frame ----------- */
     public void drawRect(int x, int y, int width, int height, Color color, int thickness) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
         Graphics2D g = img.createGraphics();
@@ -113,7 +103,6 @@ public class Img {
         g.dispose();
     }
 
-    /* ----------- independent duplicate, safe to draw on without touching the original ----------- */
     public Img copy() {
         if (img == null) throw new IllegalStateException("Image not loaded.");
         BufferedImage duplicate = new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
@@ -123,6 +112,5 @@ public class Img {
         return Img.wrap(duplicate);
     }
 
-    /* ----------- access (optional) ----------- */
     public BufferedImage get() { return img; }
 }

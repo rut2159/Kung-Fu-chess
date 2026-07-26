@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PremoveTest {
-
     private GameEngine engineFor(Board board) {
         return new GameEngine(board, new GameState(), new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
     }
@@ -27,7 +26,7 @@ class PremoveTest {
         GameEngine engine = engineFor(board);
 
         engine.requestMove(new Position(0, 0), new Position(0, 1));
-        engine.wait(1000); // הגעה, הקירור מתחיל (10 שניות)
+        engine.wait(1000);
 
         MoveResult premove = engine.requestMove(new Position(0, 1), new Position(0, 2));
 
@@ -46,8 +45,8 @@ class PremoveTest {
 
         engine.requestMove(new Position(0, 1), new Position(0, 2));
 
-        engine.wait(10000); // הקירור פג - ה-premove אמור להתחיל לרוץ
-        engine.wait(1000);  // עוד משבצת אחת (0,1)->(0,2) - זמן הגעה בפועל
+        engine.wait(10000);
+        engine.wait(1000);
 
         assertNull(board.pieceAt(new Position(0, 1)));
         assertNotNull(board.pieceAt(new Position(0, 2)), "הכלי זז אוטומטית ליעד השמור");
@@ -61,11 +60,11 @@ class PremoveTest {
         engine.requestMove(new Position(0, 0), new Position(0, 1));
         engine.wait(1000);
 
-        engine.requestMove(new Position(0, 1), new Position(0, 2)); // premove ראשון
-        engine.requestMove(new Position(0, 1), new Position(0, 3)); // דורס אותו
+        engine.requestMove(new Position(0, 1), new Position(0, 2));
+        engine.requestMove(new Position(0, 1), new Position(0, 3));
 
         engine.wait(10000);
-        engine.wait(2000); // (0,1)->(0,3) = 2 משבצות = 2000ms
+        engine.wait(2000);
 
         assertNull(board.pieceAt(new Position(0, 1)));
         assertNull(board.pieceAt(new Position(0, 2)), "ה-premove הישן לא בוצע");
@@ -80,13 +79,13 @@ class PremoveTest {
         engine.requestMove(new Position(0, 0), new Position(0, 1));
         engine.wait(1000);
 
-        engine.requestMove(new Position(0, 1), new Position(0, 2)); // premove תקין, נשמר
+        engine.requestMove(new Position(0, 1), new Position(0, 2));
 
-        MoveResult cancel = engine.requestMove(new Position(0, 1), new Position(5, 5)); // מחוץ ללוח - לא חוקי
+        MoveResult cancel = engine.requestMove(new Position(0, 1), new Position(5, 5));
         assertFalse(cancel.isAccepted());
         assertEquals(MoveReason.OUTSIDE_BOARD, cancel.reason());
 
-        engine.wait(10000); // הקירור פג - שום premove לא אמור לרוץ
+        engine.wait(10000);
 
         assertNotNull(board.pieceAt(new Position(0, 1)), "הכלי נשאר במקומו - ה-premove בוטל");
         assertNull(board.pieceAt(new Position(0, 2)));
@@ -125,12 +124,12 @@ class PremoveTest {
         GameEngine engine = engineFor(board);
 
         engine.requestMove(new Position(0, 0), new Position(0, 1));
-        engine.wait(1000); // רוק מגיע, קירור מתחיל (10 שניות)
+        engine.wait(1000);
 
-        engine.requestMove(new Position(0, 1), new Position(0, 2)); // premove, תקין כרגע
+        engine.requestMove(new Position(0, 1), new Position(0, 2));
 
-        engine.requestMove(new Position(1, 2), new Position(0, 2)); // מלך זז לתפוס את (0,2) קודם
-        engine.wait(1000); // המלך מגיע
+        engine.requestMove(new Position(1, 2), new Position(0, 2));
+        engine.wait(1000);
 
         assertDoesNotThrow(() -> engine.wait(9000), "הקירור פג וה-premove מנסה לרוץ - לא אמור לקרוס גם אם לא-חוקי כרגע");
 

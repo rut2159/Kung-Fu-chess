@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 class GameServiceTest {
-
     @Mock
     private UserRepository userRepository;
 
@@ -52,7 +51,7 @@ class GameServiceTest {
         Board board = new BoardParser().parse("wR . .");
         GameService gameService = new GameService(playerAssignmentService, ratingService, messagingTemplate, board);
 
-        playerAssignmentService.assign("white-session", "alice"); // only white joined - no black yet
+        playerAssignmentService.assign("white-session", "alice");
 
         var result = gameService.handleMove(new MoveCommand(0, 0, 0, 1), "white-session");
 
@@ -92,7 +91,7 @@ class GameServiceTest {
         GameService gameService = newGameServiceWithTwoPlayers("wR . .");
 
         gameService.handleMove(new MoveCommand(0, 0, 0, 1), "white-session");
-        gameService.advanceTimeAndBroadcast(1000); // the move must actually arrive before MoveMadeEvent fires
+        gameService.advanceTimeAndBroadcast(1000);
 
         org.mockito.Mockito.verify(messagingTemplate, org.mockito.Mockito.atLeastOnce())
                 .convertAndSend(

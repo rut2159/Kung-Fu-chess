@@ -16,6 +16,6 @@ public final class GameTicker {
 
     @Scheduled(fixedRate = TICK_MILLISECONDS)
     public void tick() {
-        gameService.advanceTimeAndBroadcast(TICK_MILLISECONDS);
+        gameService.tick(TICK_MILLISECONDS);
     }
 }

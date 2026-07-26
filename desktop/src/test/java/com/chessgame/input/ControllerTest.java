@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ControllerTest {
-
     private Board board;
     private Controller controller;
 
@@ -121,7 +120,7 @@ class ControllerTest {
 
     @Test
     void beginDrag_onEmptyCell_returnsNull() {
-        Position picked = controller.beginDrag(250, 50); // (0,2) - התא הריק היחיד בשורה הזו
+        Position picked = controller.beginDrag(250, 50);
 
         assertNull(picked);
     }
@@ -147,7 +146,7 @@ class ControllerTest {
     @Test
     void endDrag_droppedBackOnTheSameCell_doesNotRequestAMove() {
         controller.beginDrag(50, 50);
-        ControllerResult result = controller.endDrag(60, 60); // עדיין בתוך אותו תא (0,0)
+        ControllerResult result = controller.endDrag(60, 60);
 
         assertFalse(result.requestedMove(), "הנחה חזרה על המקור - מבטלים בלי לבקש מהלך");
         assertNull(controller.selectedCell());

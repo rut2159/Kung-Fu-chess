@@ -9,7 +9,6 @@ import java.awt.Point;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UiMapperTest {
-
     private UiMapper mapper;
 
     @BeforeEach
@@ -42,8 +41,8 @@ class UiMapperTest {
     void cellToPixel_position_multipliesByCellSize() {
         mapper.setCellSize(50);
         Point p = mapper.cellToPixel(new Position(2, 3));
-        assertEquals(150, p.x); // col=3 * 50
-        assertEquals(100, p.y); // row=2 * 50
+        assertEquals(150, p.x);
+        assertEquals(100, p.y);
     }
 
     @Test

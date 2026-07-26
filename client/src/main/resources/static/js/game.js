@@ -5,6 +5,11 @@ const CELL_PCT = 100 / BOARD_SIZE;
 
 const myUsername = new URLSearchParams(window.location.search).get('username');
 const myToken = new URLSearchParams(window.location.search).get('token');
+
+// If this line is missing from the file the browser loaded, it is serving a
+// stale copy - most likely the kung-fu-chess-client JAR in ~/.m2 rather than
+// client/src/main/resources/. Rebuild with: mvn clean install
+console.info('[kung-fu-chess] client build: move-history-restore');
 if (!myUsername || !myToken) {
     window.location.href = 'index.html';
 }
@@ -242,7 +247,7 @@ function drawGameOverBand(state) {
 
 function updateRoleInfo(state) {
     document.getElementById('waitingBanner').style.display =
-            (!state.whiteUsername || !state.blackUsername) ? 'block' : 'none';
+        (!state.whiteUsername || !state.blackUsername) ? 'block' : 'none';
 
     if (state.whiteUsername === myUsername) roleInfoEl.textContent = 'You are: WHITE';
     else if (state.blackUsername === myUsername) roleInfoEl.textContent = 'You are: BLACK';
@@ -267,24 +272,94 @@ function updateScoreboard(state) {
 // -----------------------------------------------------------------------
 // Move history (mirrors desktop's MoveHistoryPanel: a TIME/MOVE table per color)
 // -----------------------------------------------------------------------
+// The move table is rebuilt from this array rather than being written to
+// directly, so that a refresh or a reconnect can restore the whole thing
+// from the server instead of starting from an empty table.
+let moveHistory = [];
+const seenMoveKeys = new Set();
+
+function moveKey(entry) {
+    return entry.color + '|' + entry.timestampMs + '|' + entry.notation;
+}
+
+function renderMoveHistory() {
+    const bodies = {
+        WHITE: document.getElementById('whiteHistoryBody'),
+        BLACK: document.getElementById('blackHistoryBody')
+    };
+    bodies.WHITE.replaceChildren();
+    bodies.BLACK.replaceChildren();
+
+    for (const entry of moveHistory) {
+        const row = document.createElement('div');
+        row.className = 'moveHistoryRow';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = entry.time;
+        const moveSpan = document.createElement('span');
+        moveSpan.textContent = entry.notation;
+
+        row.appendChild(timeSpan);
+        row.appendChild(moveSpan);
+
+        const body = bodies[entry.color];
+        if (body) body.appendChild(row);
+    }
+}
+
+/**
+ * Adds one entry if it isn't already known. Returns true when it was new,
+ * so the caller can decide whether a sound belongs with it.
+ */
+function addMoveHistoryEntry(entry) {
+    const key = moveKey(entry);
+    if (seenMoveKeys.has(key)) return false;
+    seenMoveKeys.add(key);
+    moveHistory.push(entry);
+    moveHistory.sort((a, b) => a.timestampMs - b.timestampMs);
+    return true;
+}
+
+// A live move arriving over /topic/moves: show it, and play its sound.
 function appendMoveHistoryRow(entry) {
-    const bodyId = entry.color === 'WHITE' ? 'whiteHistoryBody' : 'blackHistoryBody';
-    const row = document.createElement('div');
-    row.className = 'moveHistoryRow';
-
-    const timeSpan = document.createElement('span');
-    timeSpan.textContent = entry.time;
-    const moveSpan = document.createElement('span');
-    moveSpan.textContent = entry.notation;
-
-    row.appendChild(timeSpan);
-    row.appendChild(moveSpan);
-    document.getElementById(bodyId).appendChild(row);
+    if (!addMoveHistoryEntry(entry)) return;
+    renderMoveHistory();
 
     // Reuse the notation itself to decide the sound: capture notations
     // always contain "x" (e.g. "Nxe5", "exd5"), matching desktop's own
     // isCapture()-based move/capture sound choice.
     playSound(entry.notation.includes('x') ? 'capture' : 'move');
+}
+
+/**
+ * Pulls the full history from the server. Runs on first load and again on
+ * every reconnect - /topic/moves only ever carries moves made from now on,
+ * so without this the table is empty after any refresh or dropped socket.
+ *
+ * Deliberately silent: replaying the sound of every move made so far would
+ * be a burst of noise, not feedback.
+ */
+async function loadMoveHistorySnapshot() {
+    try {
+        const response = await fetch('/api/moves');
+        if (!response.ok) {
+            // Loud on purpose. A silent failure here looks exactly like
+            // "the table just doesn't work", with nothing to go on.
+            console.error('[move history] GET /api/moves ->', response.status,
+                '- the table cannot be restored. If this is 404, the server is '
+                + 'running without GameController.moveHistory().');
+            return;
+        }
+        const entries = await response.json();
+        let added = false;
+        for (const entry of entries) {
+            if (addMoveHistoryEntry(entry)) added = true;
+        }
+        if (added) renderMoveHistory();
+        console.info('[move history] restored', entries.length, 'move(s) from the server');
+    } catch (e) {
+        console.error('[move history] could not fetch /api/moves:', e);
+    }
 }
 
 // -----------------------------------------------------------------------
@@ -379,19 +454,59 @@ function showRejectionToast(reason) {
 // server's own 50ms broadcasts.
 setInterval(() => renderFrame({}), 40);
 
-const socket = new SockJS('/ws');
-const stompClient = Stomp.over(socket);
-stompClient.debug = null;
+// A dropped WebSocket used to leave the board frozen on screen with no
+// indication at all - the game looked hung when in fact only the socket had
+// died. Cloud proxies drop idle connections as a matter of routine, so the
+// client has to notice and come back on its own.
+let stompClient = null;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
 
-stompClient.connect({}, function () {
-    statusEl.textContent = '';
-    statusEl.classList.add('connected');
-    stompClient.send('/app/join', {}, JSON.stringify({ token: myToken }));
+function setConnectionStatus(text, connected) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('connected', connected);
+}
 
-    stompClient.subscribe('/topic/game', frame => renderFrame(JSON.parse(frame.body)));
-    stompClient.subscribe('/topic/moves', frame => appendMoveHistoryRow(JSON.parse(frame.body)));
-    stompClient.subscribe('/topic/errors', frame => {
-        const error = JSON.parse(frame.body);
-        if (error.username === myUsername) showRejectionToast(error.reason);
-    });
-});
+function scheduleReconnect() {
+    if (reconnectTimer) return;
+    // 1s, 2s, 4s ... capped at 15s, so a server restart doesn't get hammered.
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 15000);
+    reconnectAttempts++;
+    setConnectionStatus('Connection lost - reconnecting...', false);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+    }, delay);
+}
+
+function connect() {
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({},
+        function onConnected() {
+            reconnectAttempts = 0;
+            setConnectionStatus('', true);
+            stompClient.send('/app/join', {}, JSON.stringify({ token: myToken }));
+
+            stompClient.subscribe('/topic/game', frame => renderFrame(JSON.parse(frame.body)));
+            stompClient.subscribe('/topic/moves', frame => appendMoveHistoryRow(JSON.parse(frame.body)));
+
+            // Subscribe first, then fetch: a move landing during the fetch
+            // arrives on the topic and is de-duplicated against the snapshot
+            // by key, so nothing is lost and nothing is shown twice.
+            loadMoveHistorySnapshot();
+            stompClient.subscribe('/topic/errors', frame => {
+                const error = JSON.parse(frame.body);
+                if (error.username === myUsername) showRejectionToast(error.reason);
+            });
+        },
+        function onError() {
+            // Fires both on a failed handshake and on an established socket
+            // dropping later - the same recovery works for both.
+            scheduleReconnect();
+        });
+}
+
+connect();

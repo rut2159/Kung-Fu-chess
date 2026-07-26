@@ -4,20 +4,12 @@ import com.chessgame.realtime.motion.Motion;
 
 import java.util.Optional;
 
-/**
- * אחראית אך ורק על זיהוי-רדיוס רציף בין שני כלי-אויב נעים (0.4 משבצת) -
- * שאלה שונה לגמרי מהעזרים הבדידים-מבוססי-תא ב-CollisionGeometry
- * (שמשמשים את ההתנגשות הידידותית/חוסמים-דוממים). לא חולקת שום קוד
- * איתם - זו גיאומטריה-רציפה, לא רשימת-תאים.
- */
 final class EnemyProximityDetector {
     private EnemyProximityDetector() {
     }
 
-    /** רדיוס ההתנגשות הפיזי במונחי "משבצות" - קבוע גיאומטרי, לא תלוי במהירות המשחק (Standard/Lightning). */
     static final double COLLISION_RADIUS_CELLS = 0.4;
 
-    /** תוצאה של בדיקת מפגש רציף: מתי זה קורה, ומי המנצח (מי ש"מגיע אחרון"). */
     static final class ProximityEvent {
         private final long eventTime;
         private final Motion winner;
@@ -34,15 +26,6 @@ final class EnemyProximityDetector {
         Motion loser() { return loser; }
     }
 
-    /**
-     * בודקת אם שני כלים הנעים בקו-ישר במהירות קבועה, ייכנסו-אי-פעם לטווח
-     * COLLISION_RADIUS_CELLS אחד מהשני בזמן שבו שניהם "באוויר" (בטווח-הזמן
-     * המשותף שבו שניהם פעילים בו-זמנית).
-     *
-     * אם כן - מחזירה את רגע-הכניסה הראשון לטווח (eventTime). קביעת המנצח
-     * היא "יתרון היוזמה" הפשוט: מי שהתחיל לזוז קודם (startTime נמוך יותר)
-     * הוא המנצח, בלי קשר למרחק/מהירות - בדיוק כפי שנקבע בכלל 1.
-     */
     static Optional<ProximityEvent> findProximityEvent(Motion a, Motion b) {
         long t0 = Math.max(a.startTime(), b.startTime());
         long t1 = Math.min(a.arrivalTime(), b.arrivalTime());
@@ -89,9 +72,6 @@ final class EnemyProximityDetector {
 
         long eventTime = t0 + Math.round(entryS);
 
-        // יתרון היוזמה: מי שהתחיל לזוז קודם מנצח - תמיד, בלי קשר לגיאומטריה.
-        // בשוויון מדויק (אותו startTime בדיוק) - ל-b (הכלי שכבר היה פעיל,
-        // "existing") יש עדיפות, כי מבחינה כרונולוגית הוא תמיד נרשם קודם.
         Motion winner = (a.startTime() < b.startTime()) ? a : b;
         Motion loser = (winner == a) ? b : a;
 

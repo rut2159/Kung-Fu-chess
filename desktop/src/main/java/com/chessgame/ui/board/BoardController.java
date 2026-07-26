@@ -13,7 +13,6 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 
 public final class BoardController implements GameListener {
-
     private final DesktopGameSession session;
     private final ChessBoardPanel boardPanel = new ChessBoardPanel();
     private final BoardDragHandler dragHandler;
@@ -87,7 +86,6 @@ public final class BoardController implements GameListener {
         render();
     }
 
-    /** ממירה קואורדינטת-מסך גולמית לקואורדינטה יחסית ללוח, או null אם היא מחוץ ללוח. */
     private Point relativeToBoard(int rawX, int rawY) {
         int relX = rawX - geometry.offsetX();
         int relY = rawY - geometry.offsetY();

@@ -22,17 +22,6 @@ public final class BoardPrinter {
     }
 
     private String symbol(Piece piece) {
-        char color = piece.color() == Piece.Color.WHITE ? 'w' : 'b';
-        char kind;
-        switch (piece.kind()) {
-            case KING:   kind = 'K'; break;
-            case QUEEN:  kind = 'Q'; break;
-            case ROOK:   kind = 'R'; break;
-            case BISHOP: kind = 'B'; break;
-            case KNIGHT: kind = 'N'; break;
-            case PAWN:   kind = 'P'; break;
-            default:     throw new IllegalStateException("Unhandled piece kind: " + piece.kind());
-        }
-        return "" + color + kind;
+        return String.valueOf(piece.color().letter()) + piece.kind().letter();
     }
 }

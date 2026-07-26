@@ -4,7 +4,6 @@ package com.chessgame.engine.snapshot;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
-
 import java.util.Collections;
 import java.util.List;
 
@@ -71,12 +70,10 @@ public final class GameSnapshot {
             this.hasPremove = hasPremove;
         }
 
-        /** מחזירה עותק זהה עם דגל ה-premove מעודכן - כדי לא לגעת בבנאים הקיימים. */
         public PieceView withPremove(boolean hasPremove) {
             return new PieceView(id, color, kind, position, state, displayRow, displayCol, cooldownRemaining, hasPremove);
         }
 
-        /** מחזירה עותק זהה עם מיקום-תצוגה מוחלף - לשימוש ה-UI בזמן גרירה (drag & drop), בלי לגעת בלוגיקת המשחק. */
         public PieceView withDisplayPosition(double displayRow, double displayCol) {
             return new PieceView(id, color, kind, position, state, displayRow, displayCol, cooldownRemaining, hasPremove);
         }

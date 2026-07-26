@@ -31,15 +31,15 @@
     <dependencies>
         <dependency>
             <groupId>com.kungfuchess</groupId>
-            <artifactId>kung-fu-chess-core</artifactId>
+            <artifactId>core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.kungfuchess</groupId>
-            <artifactId>kung-fu-chess-assets</artifactId>
+            <artifactId>assets</artifactId>
         </dependency>
         <dependency>
             <groupId>com.kungfuchess</groupId>
-            <artifactId>kung-fu-chess-client</artifactId>
+            <artifactId>client</artifactId>
         </dependency>
 
         <!-- spring-boot-starter-websocket pulls in spring-messaging + spring-websocket,

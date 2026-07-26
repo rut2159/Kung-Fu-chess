@@ -36,17 +36,17 @@
             <!-- Inter-module dependencies: any module can depend on core/assets this way -->
             <dependency>
                 <groupId>com.kungfuchess</groupId>
-                <artifactId>kung-fu-chess-core</artifactId>
+                <artifactId>core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.kungfuchess</groupId>
-                <artifactId>kung-fu-chess-assets</artifactId>
+                <artifactId>assets</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.kungfuchess</groupId>
-                <artifactId>kung-fu-chess-client</artifactId>
+                <artifactId>client</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SpeedConfigTest {
-
     @Test
     void standardPreset_matchesTheDocumentedValues() {
         assertEquals(1000, SpeedConfig.STANDARD.cellDurationMs());
@@ -41,7 +40,7 @@ class SpeedConfigTest {
         RealTimeArbiter arbiter = new RealTimeArbiter(board, SpeedConfig.LIGHTNING);
 
         arbiter.startMotion(new Position(0, 0), new Position(0, 1));
-        arbiter.advanceTime(200); // הגעה, הקירור מתחיל עכשיו
+        arbiter.advanceTime(200);
 
         assertFalse(arbiter.canStartMotion(new Position(0, 1), new Position(0, 2)), "עדיין בקירור");
 
@@ -55,7 +54,7 @@ class SpeedConfigTest {
     @Test
     void defaultConstructor_stillBehavesLikeStandard_backwardCompatible() {
         Board board = new BoardParser().parse("wR . .");
-        RealTimeArbiter arbiter = new RealTimeArbiter(board); // בנאי ישן, בלי SpeedConfig
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
 
         arbiter.startMotion(new Position(0, 0), new Position(0, 1));
         arbiter.advanceTime(1000);

@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RealTimeArbiterTest {
-
     private Board board;
     private RealTimeArbiter arbiter;
 
@@ -112,14 +111,12 @@ class RealTimeArbiterTest {
      */
     @Test
     void advanceTime_bigJumpAndManySmallTicks_produceTheSameResult() {
-        // תרחיש עם ריצה בקפיצה גדולה-אחת
         Board bigJumpBoard = new BoardParser().parse("wR . wK . .\n. . . . .");
         RealTimeArbiter bigJumpArbiter = new RealTimeArbiter(bigJumpBoard);
         bigJumpArbiter.startMotion(new Position(0, 0), new Position(0, 4));
         bigJumpArbiter.startMotion(new Position(0, 2), new Position(1, 2));
         bigJumpArbiter.advanceTime(10000);
 
-        // אותו תרחיש בדיוק, אבל עם הרבה טיקים קטנים
         Board smallTicksBoard = new BoardParser().parse("wR . wK . .\n. . . . .");
         RealTimeArbiter smallTicksArbiter = new RealTimeArbiter(smallTicksBoard);
         smallTicksArbiter.startMotion(new Position(0, 0), new Position(0, 4));

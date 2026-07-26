@@ -8,7 +8,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 public final class RenderUI {
-
     private static final String BOARD_IMAGE_PATH = "/board.png";
     private static final Color SELECTED_CELL_BORDER_COLOR = new Color(255, 255, 255, 230);
     private static final int SELECTED_CELL_BORDER_THICKNESS = 4;
@@ -75,7 +74,6 @@ public final class RenderUI {
         boardImage.fillRect(pixel.x, topY, cellSize, highlightHeight, COOLDOWN_HIGHLIGHT_COLOR);
     }
 
-    /** תא-כלי עם premove ממתין - צביעה כחולה שקופה על כל המשבצת (בסגנון-דומה לצביעת הקירור הצהובה). */
     private void drawPremoveHighlight(Img boardImage, GameSnapshot.PieceView piece, int cellSize) {
         if (!piece.hasPremove()) {
             return;

@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * actually gets published for real game situations - not just isolated units.
  */
 class GameEngineBusIntegrationTest {
-
     private Board board;
     private GameState gameState;
     private GameEngine engine;
@@ -92,7 +91,7 @@ class GameEngineBusIntegrationTest {
         List<MoveRejectedEvent> received = new ArrayList<>();
         engine.eventBus().subscribe(MoveRejectedEvent.class, received::add);
 
-        engine.requestMove(new Position(0, 0), new Position(1, 1)); // illegal rook move
+        engine.requestMove(new Position(0, 0), new Position(1, 1));
 
         assertEquals(1, received.size());
     }
@@ -103,7 +102,7 @@ class GameEngineBusIntegrationTest {
         List<MoveRejectedEvent> received = new ArrayList<>();
         engine.eventBus().subscribe(MoveRejectedEvent.class, received::add);
 
-        engine.requestMove(new Position(0, 0), new Position(1, 0)); // legal rook move
+        engine.requestMove(new Position(0, 0), new Position(1, 0));
 
         assertTrue(received.isEmpty());
     }
@@ -114,7 +113,7 @@ class GameEngineBusIntegrationTest {
         List<GameOverEvent> received = new ArrayList<>();
         engine.eventBus().subscribe(GameOverEvent.class, received::add);
 
-        engine.requestMove(new Position(0, 0), new Position(0, 1)); // wR -> bK
+        engine.requestMove(new Position(0, 0), new Position(0, 1));
         engine.wait(1000);
 
         assertEquals(1, received.size());
@@ -126,7 +125,7 @@ class GameEngineBusIntegrationTest {
         List<ScoreChangedEvent> received = new ArrayList<>();
         engine.eventBus().subscribe(ScoreChangedEvent.class, received::add);
 
-        engine.requestMove(new Position(0, 0), new Position(0, 1)); // wR captures bR
+        engine.requestMove(new Position(0, 0), new Position(0, 1));
         engine.wait(1000);
 
         assertEquals(1, received.size());
@@ -148,14 +147,14 @@ class GameEngineBusIntegrationTest {
         engine.eventBus().subscribe(MoveMadeEvent.class, received::add);
 
         engine.requestMove(new Position(0, 0), new Position(0, 1));
-        engine.wait(1000); // arrival, cooldown starts
-        received.clear(); // only care about the premove's own event from here on
+        engine.wait(1000);
+        received.clear();
 
-        engine.requestMove(new Position(0, 1), new Position(0, 3)); // queued as a premove (capture)
+        engine.requestMove(new Position(0, 1), new Position(0, 3));
         assertTrue(received.isEmpty(), "queueing a premove must not itself publish a move event yet");
 
-        engine.wait(10000); // cooldown expires - the premove fires automatically
-        engine.wait(2000);  // travel time for the 2-cell move
+        engine.wait(10000);
+        engine.wait(2000);
 
         assertEquals(1, received.size(), "the premove's own execution must publish exactly one MoveMadeEvent");
         assertTrue(received.get(0).record().isCapture(), "it captured the black rook, so isCapture() must be true");
@@ -175,10 +174,10 @@ class GameEngineBusIntegrationTest {
         List<MoveMadeEvent> received = new ArrayList<>();
         engine.eventBus().subscribe(MoveMadeEvent.class, received::add);
 
-        engine.requestMove(new Position(0, 0), new Position(0, 3)); // wR heads toward bR - 3 cells
-        engine.wait(1000); // wR is now mid-flight, having covered 1 of 3 cells
+        engine.requestMove(new Position(0, 0), new Position(0, 3));
+        engine.wait(1000);
 
-        engine.requestMove(new Position(0, 3), new Position(1, 3)); // bR flees to a different row
+        engine.requestMove(new Position(0, 3), new Position(1, 3));
         engine.wait(3000); // wR finishes its remaining travel and lands on the now-empty square
 
         MoveMadeEvent whiteRookArrival = received.stream()

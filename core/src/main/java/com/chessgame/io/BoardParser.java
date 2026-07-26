@@ -9,6 +9,7 @@ import java.util.List;
 
 public final class BoardParser {
 
+    private static final String EMPTY_CELL = ".";
     private static final String TOKEN_PATTERN = "^(\\.|[wb][KQRBNP])$";
 
     public static final class BoardParseException extends RuntimeException {
@@ -62,24 +63,14 @@ public final class BoardParser {
     }
 
     private void addPieceIfPresent(Board board, String token, int row, int col) {
-        if (token.equals(".")) return;
+        if (token.equals(EMPTY_CELL)) return;
 
-        Piece.Color color = token.charAt(0) == 'w' ? Piece.Color.WHITE : Piece.Color.BLACK;
-        Piece.Kind kind = kindFor(token.charAt(1));
+        Piece.Color color = Piece.Color.fromLetter(token.charAt(0))
+                .orElseThrow(() -> new BoardParseException("UNKNOWN_TOKEN"));
+        Piece.Kind kind = Piece.Kind.fromLetter(token.charAt(1))
+                .orElseThrow(() -> new BoardParseException("UNKNOWN_TOKEN"));
         String id = "r" + row + "c" + col;
 
         board.addPiece(new Piece(id, color, kind, new Position(row, col)));
-    }
-
-    private Piece.Kind kindFor(char letter) {
-        switch (letter) {
-            case 'K': return Piece.Kind.KING;
-            case 'Q': return Piece.Kind.QUEEN;
-            case 'R': return Piece.Kind.ROOK;
-            case 'B': return Piece.Kind.BISHOP;
-            case 'N': return Piece.Kind.KNIGHT;
-            case 'P': return Piece.Kind.PAWN;
-            default:  throw new BoardParseException("UNKNOWN_TOKEN");
-        }
     }
 }

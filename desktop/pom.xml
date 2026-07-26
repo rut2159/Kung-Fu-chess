@@ -15,11 +15,11 @@
     <dependencies>
         <dependency>
             <groupId>com.kungfuchess</groupId>
-            <artifactId>kung-fu-chess-core</artifactId>
+            <artifactId>core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.kungfuchess</groupId>
-            <artifactId>kung-fu-chess-assets</artifactId>
+            <artifactId>assets</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

@@ -9,15 +9,22 @@ public final class MoveRecord {
     private final Position source;
     private final Position destination;
     private final boolean capture;
+    private final boolean jumpCapture;
     private final long timestamp;
 
     public MoveRecord(Piece.Color color, Piece.Kind kind, Position source, Position destination,
-                       boolean capture, long timestamp) {
+                      boolean capture, long timestamp) {
+        this(color, kind, source, destination, capture, false, timestamp);
+    }
+
+    public MoveRecord(Piece.Color color, Piece.Kind kind, Position source, Position destination,
+                      boolean capture, boolean jumpCapture, long timestamp) {
         this.color = color;
         this.kind = kind;
         this.source = source;
         this.destination = destination;
         this.capture = capture;
+        this.jumpCapture = jumpCapture;
         this.timestamp = timestamp;
     }
 
@@ -27,6 +34,8 @@ public final class MoveRecord {
     public Position destination() { return destination; }
 
     public boolean isCapture() { return capture; }
+
+    public boolean isJumpCapture() { return jumpCapture; }
 
     public long timestamp() { return timestamp; }
 }
