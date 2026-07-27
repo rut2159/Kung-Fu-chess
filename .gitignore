@@ -3,7 +3,10 @@ target/
 *.log
 *.tmp
 
-# SQLite - נוצר בזמן ריצה מנתיב יחסי, ומכיל נתוני משתמשים
+# Runtime logs
+logs/
+
+# SQLite - created at runtime, holds user data
 *.db
 *.db-journal
 *.db-wal

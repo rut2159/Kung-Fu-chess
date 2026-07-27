@@ -8,6 +8,7 @@ async function doRegister() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
+    ActivityLog.http('POST', '/api/register', response.status);
     const data = await response.json();
     msgEl.textContent = data.success
             ? 'נרשמת בהצלחה! עכשיו לחצי כניסה (Log in)'
@@ -20,6 +21,7 @@ async function doLogin() {
     const msgEl = document.getElementById('loginMessage');
     if (!username || !password) { msgEl.textContent = 'נא למלא שם משתמש וסיסמה'; return; }
 
+    ActivityLog.event('login requested for user=' + username);
     const response = await fetch('/api/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

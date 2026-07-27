@@ -363,6 +363,7 @@ function appendMoveHistoryRow(entry) {
 async function loadMoveHistorySnapshot() {
     try {
         const response = await fetch('/api/moves');
+        ActivityLog.http('GET', '/api/moves', response.status);
         if (!response.ok) {
             // Loud on purpose. A silent failure here looks exactly like
             // "the table just doesn't work", with nothing to go on.
@@ -389,10 +390,14 @@ async function loadMoveHistorySnapshot() {
 // -----------------------------------------------------------------------
 
 function sendMove(fromRow, fromCol, toRow, toCol) {
-    stompClient.send('/app/move', {}, JSON.stringify({ fromRow, fromCol, toRow, toCol }));
+    const body = JSON.stringify({ fromRow, fromCol, toRow, toCol });
+    ActivityLog.sent('/app/move', body);
+    stompClient.send('/app/move', {}, body);
 }
 function sendJump(row, col) {
-    stompClient.send('/app/jump', {}, JSON.stringify({ row, col }));
+    const body = JSON.stringify({ row, col });
+    ActivityLog.sent('/app/jump', body);
+    stompClient.send('/app/jump', {}, body);
 }
 
 function onMouseDown(e, row, col) {
@@ -493,6 +498,7 @@ function scheduleReconnect() {
     // 1s, 2s, 4s ... capped at 15s, so a server restart doesn't get hammered.
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 15000);
     reconnectAttempts++;
+    ActivityLog.event('reconnect attempt ' + reconnectAttempts);
     setConnectionStatus('Connection lost - reconnecting...', false);
     reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
@@ -509,21 +515,34 @@ function connect() {
         function onConnected() {
             reconnectAttempts = 0;
             setConnectionStatus('', true);
-            stompClient.send('/app/join', {}, JSON.stringify({ token: myToken }));
+            ActivityLog.setContext('-', myUsername);
+            ActivityLog.event('stomp connected');
 
-            stompClient.subscribe('/topic/game', frame => renderFrame(JSON.parse(frame.body)));
-            stompClient.subscribe('/topic/moves', frame => appendMoveHistoryRow(JSON.parse(frame.body)));
+            const joinBody = JSON.stringify({ token: myToken });
+            ActivityLog.sent('/app/join', joinBody);
+            stompClient.send('/app/join', {}, joinBody);
+
+            stompClient.subscribe('/topic/game', frame => {
+                ActivityLog.received('/topic/game', frame.body);
+                renderFrame(JSON.parse(frame.body));
+            });
+            stompClient.subscribe('/topic/moves', frame => {
+                ActivityLog.received('/topic/moves', frame.body);
+                appendMoveHistoryRow(JSON.parse(frame.body));
+            });
 
             // Subscribe first, then fetch: a move landing during the fetch
             // arrives on the topic and is de-duplicated against the snapshot
             // by key, so nothing is lost and nothing is shown twice.
             loadMoveHistorySnapshot();
             stompClient.subscribe('/topic/errors', frame => {
+                ActivityLog.received('/topic/errors', frame.body);
                 const error = JSON.parse(frame.body);
                 if (error.username === myUsername) showRejectionToast(error.reason);
             });
         },
         function onError() {
+            ActivityLog.event('stomp connection lost');
             // Fires both on a failed handshake and on an established socket
             // dropping later - the same recovery works for both.
             scheduleReconnect();

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Two files on purpose.
+
+    server.log holds everything, including the ~50 lines of framework noise
+    printed at every startup. activity.log holds only client/server traffic,
+    so it can be read on its own without hunting for the interesting lines.
+
+    LOG_DIR is relative, so it resolves against the JVM working directory.
+    With the run configuration pointing at Kung-Fu-chess, that is
+    Kung-Fu-chess/logs.
+-->
+<configuration>
+
+    <property name="LOG_DIR" value="logs"/>
+    <property name="FULL_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+    <property name="ACTIVITY_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${FULL_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="SERVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/server.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/server.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FULL_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ACTIVITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/activity.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/activity.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${ACTIVITY_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- additivity=false keeps activity lines out of server.log and the console. -->
+    <logger name="ACTIVITY" level="INFO" additivity="false">
+        <appender-ref ref="ACTIVITY_FILE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SERVER_FILE"/>
+    </root>
+
+</configuration>
