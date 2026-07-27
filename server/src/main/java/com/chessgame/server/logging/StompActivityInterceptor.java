@@ -1,6 +1,7 @@
 package com.chessgame.server.logging;
 
-import com.chessgame.server.service.PlayerAssignmentService;
+import com.chessgame.server.game.RoomRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -11,11 +12,11 @@ import java.nio.charset.StandardCharsets;
 public final class StompActivityInterceptor implements ChannelInterceptor {
 
     private final boolean inbound;
-    private final PlayerAssignmentService playerAssignmentService;
+    private final ObjectProvider<RoomRegistry> roomRegistryProvider;
 
-    public StompActivityInterceptor(boolean inbound, PlayerAssignmentService playerAssignmentService) {
+    public StompActivityInterceptor(boolean inbound, ObjectProvider<RoomRegistry> roomRegistryProvider) {
         this.inbound = inbound;
-        this.playerAssignmentService = playerAssignmentService;
+        this.roomRegistryProvider = roomRegistryProvider;
     }
 
     @Override
@@ -23,7 +24,7 @@ public final class StompActivityInterceptor implements ChannelInterceptor {
         try {
             record(message);
         } catch (RuntimeException ignored) {
-            // Deliberately swallowed - see above.
+            return message;
         }
         return message;
     }
@@ -37,10 +38,7 @@ public final class StompActivityInterceptor implements ChannelInterceptor {
             destination = accessor.getCommand() == null ? "-" : accessor.getCommand().name();
         }
 
-        String username = sessionId == null
-                ? null
-                : playerAssignmentService.usernameForSession(sessionId).orElse(null);
-
+        String username = resolveUsername(sessionId);
         String body = bodyOf(message);
 
         if (inbound) {
@@ -48,6 +46,17 @@ public final class StompActivityInterceptor implements ChannelInterceptor {
         } else {
             ActivityLog.outbound(sessionId, username, destination, body);
         }
+    }
+
+    private String resolveUsername(String sessionId) {
+        if (sessionId == null) {
+            return null;
+        }
+        RoomRegistry registry = roomRegistryProvider.getIfAvailable();
+        if (registry == null) {
+            return null;
+        }
+        return registry.usernameForSession(sessionId).orElse(null);
     }
 
     private static String bodyOf(Message<?> message) {

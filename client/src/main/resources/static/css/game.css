@@ -2,32 +2,60 @@ body { overflow: hidden; }
 
 :root {
     --panel-width: clamp(84px, 13vw, 160px);
-    --panel-gap: 36px;
+    --panel-gap: clamp(12px, 3vw, 36px);
 }
 
-#status { color:  rgb(212, 175, 55); margin-bottom: 4px; font-size: 12px; min-height: 0; }
-#waitingBanner {
+#gameHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+#headerRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 2px 0 4px;
+}
+
+#roomTag {
+    color: var(--text-muted);
+    font-size: clamp(11px, 1.4vw, 13px);
+    letter-spacing: 0.04em;
+}
+#roomTag b {
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    margin-left: 4px;
+}
+
+#connectionStatus { color: var(--gold); font-size: 12px; min-height: 0; }
+
+#waitingBanner,
+#absenceBanner {
     display: none;
-    color: #4a90d9;
-    background: rgba(66,133,244,0.15);
-    border: 1px solid rgba(66,133,244,0.4);
     padding: 5px 14px;
-    border-radius: 6px;
-    margin-bottom: 6px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
 }
-#disconnectBanner {
-    display: none;
-    color: #e06c5a;
-    background: rgba(224,108,90,0.15);
-    border: 1px solid rgba(224,108,90,0.45);
-    padding: 5px 14px;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    font-size: 13px;
+#waitingBanner {
+    color: var(--info);
+    background: rgba(66, 133, 244, 0.15);
+    border: 1px solid rgba(66, 133, 244, 0.4);
+}
+#absenceBanner {
+    color: var(--danger);
+    background: rgba(224, 108, 90, 0.15);
+    border: 1px solid rgba(224, 108, 90, 0.45);
     font-weight: 600;
 }
-#roleInfo { color: #f5c518; margin-bottom: 6px; min-height: 18px; font-size: 13px; }
+
+#roleInfo { color: #f5c518; min-height: 18px; font-size: 13px; }
+
 #gameArea {
     display: flex;
     flex-wrap: nowrap;
@@ -36,12 +64,14 @@ body { overflow: hidden; }
     gap: var(--panel-gap);
     width: 100%;
     min-height: 0;
+    flex: 1;
 }
 
 .moveHistoryPanel {
     width: var(--panel-width);
     background: #000;
-    border: clamp(1px, 0.3vw, 2px) solid rgb(212, 175, 55);
+    border: clamp(1px, 0.3vw, 2px) solid var(--gold);
+    border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -55,7 +85,7 @@ body { overflow: hidden; }
     border-bottom: 1px solid #333;
     flex-shrink: 0;
 }
-.playerName { color: rgb(212, 175, 55); font-weight: 700; font-size: clamp(11px, 1.6vw, 16px); }
+.playerName { color: var(--gold); font-weight: 700; font-size: clamp(11px, 1.6vw, 16px); }
 .playerScore { color: #cfd2d6; font-size: clamp(9px, 1.2vw, 12px); margin-top: 2px; }
 
 .moveHistoryColumnHeader {
@@ -68,20 +98,13 @@ body { overflow: hidden; }
 }
 .moveHistoryColumnHeader span { flex: 1; padding: 3px 4px; text-align: left; }
 
-/* This is the part that actually scrolls. flex:1 lets it fill whatever
-   vertical space is left in the (now height-stretched) panel; min-height:0
-   is what allows it to shrink below its content's natural size at all -
-   without it a flex child just keeps growing the panel instead of scrolling. */
 .moveHistoryBody {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     font-size: clamp(9px, 1.1vw, 12px);
 }
-.moveHistoryRow {
-    display: flex;
-    color: #ccc;
-}
+.moveHistoryRow { display: flex; color: #ccc; }
 .moveHistoryRow span { flex: 1; padding: 3px 4px; text-align: left; }
 .moveHistoryRow:nth-child(even) { background: #121212; }
 
@@ -89,8 +112,8 @@ body { overflow: hidden; }
     position: relative;
     width: min(
         640px,
-        calc(100vw - 2 * var(--panel-width) - 2 * var(--panel-gap) - 40px),
-        calc(100vh - 140px)
+        calc(100vw - 2 * var(--panel-width) - 2 * var(--panel-gap) - 32px),
+        calc(100dvh - 200px)
     );
     aspect-ratio: 1 / 1;
     background-image: url('/board.png');
@@ -98,6 +121,7 @@ body { overflow: hidden; }
     user-select: none;
     touch-action: none;
     flex-shrink: 0;
+    align-self: center;
 }
 
 .square, .piece-sprite, .cooldown-highlight, .premove-highlight, .coordinate-label {
@@ -114,30 +138,32 @@ body { overflow: hidden; }
     user-drag: none;
 }
 
-/* Bolder, higher-contrast file/rank labels, with a dark shadow so they stay
-   legible on both the light and dark squares. */
 .coordinate-label {
-    width: auto; height: auto;
+    width: auto;
+    height: auto;
     z-index: 1;
     color: #ffffff;
     font-weight: 800;
-    font-size: clamp(12px, 2.1vw, 17px);
-    text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 1px rgba(0,0,0,0.9);
+    font-size: clamp(10px, 2.1vw, 17px);
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 0 0 1px rgba(0, 0, 0, 0.9);
     pointer-events: none;
 }
 
 .square.selected {
-    outline: max(2px, 0.4vw) solid rgba(255,255,255,0.902);
+    outline: max(2px, 0.4vw) solid rgba(255, 255, 255, 0.9);
     outline-offset: calc(-1 * max(2px, 0.4vw));
 }
-.cooldown-highlight { background: rgba(212,175,55,0.627); }
-.premove-highlight  { background: rgba(66,133,244,0.627); }
+.cooldown-highlight { background: rgba(212, 175, 55, 0.627); }
+.premove-highlight { background: rgba(66, 133, 244, 0.627); }
 
 #gameOverBand {
     position: absolute;
-    left: 0; width: 100%; height: 33.33%; top: 33.33%;
+    left: 0;
+    width: 100%;
+    height: 33.33%;
+    top: 33.33%;
     z-index: 10;
-    background: rgba(0,0,0,0.922);
+    background: rgba(0, 0, 0, 0.92);
     display: none;
     flex-direction: column;
     align-items: center;
@@ -145,8 +171,8 @@ body { overflow: hidden; }
     pointer-events: none;
     text-align: center;
 }
-#gameOverTitle { color: #ffffff; font-weight: 700; font-size: clamp(16px, 4vw, 28px); }
-#gameOverWinner { color: rgb(212,175,55); margin-top: 8px; font-size: clamp(12px, 2.5vw, 18px); }
+#gameOverTitle { color: #ffffff; font-weight: 700; font-size: clamp(16px, 4vw, 28px); letter-spacing: 0.06em; }
+#gameOverWinner { color: var(--gold); margin-top: 8px; font-size: clamp(12px, 2.5vw, 18px); }
 
 #dragGhost {
     position: fixed;
@@ -156,9 +182,6 @@ body { overflow: hidden; }
     opacity: 0.85;
 }
 
-/* Fixed/overlay positioning is the actual fix for "the whole board shifts when
-   an error appears" - this never participates in normal document flow, so
-   showing/hiding it can never push anything else on the page. */
 #rejectionToast {
     position: fixed;
     top: 16px;
@@ -166,10 +189,26 @@ body { overflow: hidden; }
     transform: translateX(-50%);
     display: none;
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     background: #4a1b0c;
     color: #f0997b;
     font-size: 13px;
     z-index: 200;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 720px) {
+    body { overflow: auto; }
+    #gameArea {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    #boardWrap {
+        order: -1;
+        width: min(640px, calc(100vw - 32px), calc(100dvh - 240px));
+    }
+    .moveHistoryPanel {
+        width: calc(50% - 6px);
+        max-height: 30dvh;
+    }
 }

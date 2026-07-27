@@ -3,25 +3,65 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kung Fu Chess - Login</title>
+<title>Kung Fu Chess</title>
 <link rel="stylesheet" href="css/shared.css">
-<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/home.css">
 </head>
-<body>
+<body class="home">
 
-<h1>Kung Fu Chess</h1>
-<div id="loginScreen">
-    <div id="loginInstructions">משתמש/ת חדש/ה? קודם לחצי <b>הרשמה</b>. כבר נרשמת? מלאי את אותם פרטים ולחצי <b>כניסה</b>.</div>
-    <label for="usernameInput">שם משתמש</label>
-    <input id="usernameInput" placeholder="לדוגמה: dana123" autocomplete="username">
-    <label for="passwordInput">סיסמה</label>
-    <input id="passwordInput" type="password" placeholder="הסיסמה שלך" autocomplete="current-password">
-    <button onclick="doLogin()">כניסה (Log in)</button>
-    <button onclick="doRegister()">הרשמה (Register)</button>
-    <div id="loginMessage"></div>
-</div>
+<main class="cardStack">
+    <h1>Kung Fu Chess</h1>
 
+    <section class="card" id="loginCard">
+        <p class="cardHint">New here? Register first, then log in with the same details.</p>
+
+        <label for="usernameInput">Username</label>
+        <input id="usernameInput" autocomplete="username" spellcheck="false">
+
+        <label for="passwordInput">Password</label>
+        <input id="passwordInput" type="password" autocomplete="current-password">
+
+        <div class="buttonRow">
+            <button class="btn btn-primary" id="loginButton" type="button">Log in</button>
+            <button class="btn btn-quiet" id="registerButton" type="button">Register</button>
+        </div>
+
+        <p class="cardMessage" id="loginMessage"></p>
+    </section>
+
+    <section class="card is-hidden" id="menuCard">
+        <p class="cardHint" id="menuGreeting"></p>
+
+        <div class="buttonRow" id="menuButtonsRow">
+            <button class="btn btn-primary" id="playButton" type="button">Play</button>
+            <button class="btn btn-outline" id="roomButton" type="button">Room</button>
+        </div>
+
+        <p class="cardHint is-hidden" id="searchingHint">Looking for an opponent...</p>
+        <div class="buttonRow is-hidden" id="searchingRow">
+            <button class="btn btn-quiet" id="cancelSearchButton" type="button">Cancel</button>
+        </div>
+    </section>
+
+    <section class="card is-hidden" id="roomCard">
+        <p class="cardHint" id="roomGreeting"></p>
+
+        <label for="roomIdInput">Room id</label>
+        <input id="roomIdInput" maxlength="6" spellcheck="false" autocomplete="off"
+               placeholder="Leave empty to create a new room">
+
+        <div class="buttonRow">
+            <button class="btn btn-primary" id="createRoomButton" type="button">Create</button>
+            <button class="btn btn-outline" id="joinRoomButton" type="button">Join</button>
+            <button class="btn btn-quiet" id="cancelRoomButton" type="button">Cancel</button>
+        </div>
+
+        <p class="cardMessage" id="roomMessage"></p>
+    </section>
+</main>
+
+<script src="js/config.js"></script>
 <script src="js/activityLog.js"></script>
-<script src="js/login.js"></script>
+<script src="js/home.js"></script>
 </body>
 </html>

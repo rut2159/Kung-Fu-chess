@@ -60,6 +60,13 @@ class WireContractTest {
     }
 
     @Test
+    void joinRejectedMessage_fieldsMatchTheBrowserClient() {
+        assertEquals(
+                Set.of("type", "username", "reason", "occupiedRoomId"),
+                componentsOf(JoinRejectedMessage.class));
+    }
+
+    @Test
     void moveCommand_fieldsMatchTheBrowserClient() {
         assertEquals(
                 Set.of("fromRow", "fromCol", "toRow", "toCol"),

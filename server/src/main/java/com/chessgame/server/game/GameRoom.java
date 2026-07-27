@@ -16,7 +16,6 @@ import com.chessgame.server.dto.GameStateMessage;
 import com.chessgame.server.dto.JumpCommand;
 import com.chessgame.server.dto.MoveCommand;
 import com.chessgame.server.dto.MoveHistoryEntryMessage;
-import com.chessgame.server.service.PlayerAssignmentService;
 import com.chessgame.server.service.RatingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,17 +29,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class GameRoom {
+public class GameRoom {
 
     private static final Logger log = LoggerFactory.getLogger(GameRoom.class);
 
     private static final int MAX_QUEUED_TICKS = 20;
-
-    private static final int RESIGN_COUNTDOWN_MS = 20_000;
+    private static final int ABANDON_COUNTDOWN_MS = 20_000;
 
     private final String roomId;
     private final GameSession session;
-    private final PlayerAssignmentService playerAssignmentService;
+    private final Seats seats = new Seats();
     private final RatingService ratingService;
     private final SimpMessagingTemplate messagingTemplate;
     private final MoveNotation notation;
@@ -49,17 +47,16 @@ public final class GameRoom {
     private final AtomicInteger queuedTicks = new AtomicInteger();
 
     private GameStateMessage lastBroadcast;
+    private String absentUsername;
+    private int countdownMs;
 
-    private String disconnectedUsername;
-    private int resignCountdownMs;
+    private Piece.Color forfeitWinner;
 
     public GameRoom(String roomId,
                     Board board,
-                    PlayerAssignmentService playerAssignmentService,
                     RatingService ratingService,
                     SimpMessagingTemplate messagingTemplate) {
         this.roomId = roomId;
-        this.playerAssignmentService = playerAssignmentService;
         this.ratingService = ratingService;
         this.messagingTemplate = messagingTemplate;
 
@@ -82,73 +79,111 @@ public final class GameRoom {
         gameThread.shutdownNow();
     }
 
-    public PlayerAssignmentService.Role join(String sessionId, String username) {
+    public Seats.Role join(String username) {
         return submit(() -> {
-            PlayerAssignmentService.Role role = playerAssignmentService.assign(sessionId, username);
-            if (username.equals(disconnectedUsername) && !session.gameEngine.isGameOver()) {
-                clearResignCountdown();
+            Seats.Role role = seats.take(username);
+            if (username.equals(absentUsername)) {
+                clearCountdown();
             }
             broadcastStateToAll();
             return role;
         });
     }
 
+    public Seats.Role roleOf(String username) {
+        return seats.roleOf(username);
+    }
 
-    public void playerDisconnected(String username) {
+    public boolean isSeated(String username) {
+        return seats.roleOf(username) != Seats.Role.VIEWER;
+    }
+
+    public Optional<String> whiteUsername() {
+        return seats.whiteUsername();
+    }
+
+    public Optional<String> blackUsername() {
+        return seats.blackUsername();
+    }
+
+    public void playerLeft(String username) {
         submit(() -> {
-            PlayerAssignmentService.Role role = playerAssignmentService.roleForUsername(username);
-            Piece.Color color = colorOf(role);
-            if (color == null || session.gameEngine.isGameOver()) {
+            if (!isSeated(username) || session.gameEngine.isGameOver()) {
                 return null;
             }
-            disconnectedUsername = username;
-            resignCountdownMs = RESIGN_COUNTDOWN_MS;
-            log.info("room {}: {} disconnected - abandoning in {} ms unless they return", roomId, username, RESIGN_COUNTDOWN_MS);
+            // Nobody to forfeit to yet. Counting down here would kill the room
+            // under the next person to walk in with the code: they would take
+            // the empty seat and the game would end seconds later without them
+            // ever having moved. Hand the seat back instead.
+            if (!seats.bothSeatsFilled()) {
+                seats.release(username);
+                log.info("room {}: {} left before the game started, seat released", roomId, username);
+                broadcastStateToAll();
+                return null;
+            }
+            absentUsername = username;
+            countdownMs = ABANDON_COUNTDOWN_MS;
+            log.info("room {}: {} left, forfeiting in {} ms unless they return",
+                    roomId, username, ABANDON_COUNTDOWN_MS);
             broadcastStateToAll();
             return null;
         });
     }
 
-    private static Piece.Color colorOf(PlayerAssignmentService.Role role) {
-        if (role.owns(Piece.Color.WHITE)) return Piece.Color.WHITE;
-        if (role.owns(Piece.Color.BLACK)) return Piece.Color.BLACK;
-        return null;
-    }
-
-    private void clearResignCountdown() {
-        if (disconnectedUsername != null) {
-            log.info("room {}: {} reconnected - countdown cancelled", roomId, disconnectedUsername);
+    private void clearCountdown() {
+        if (absentUsername != null) {
+            log.info("room {}: {} returned, countdown cancelled", roomId, absentUsername);
         }
-        disconnectedUsername = null;
-        resignCountdownMs = 0;
+        absentUsername = null;
+        countdownMs = 0;
     }
-
 
     private void advanceTime(int milliseconds) {
         if (session.gameEngine.isGameOver()) {
             return;
         }
-        if (disconnectedUsername != null) {
-            advanceResignCountdown(milliseconds);
+        if (absentUsername != null) {
+            advanceCountdown(milliseconds);
             return;
         }
         session.gameEngine.wait(milliseconds);
     }
 
-    private void advanceResignCountdown(int milliseconds) {
-        resignCountdownMs -= milliseconds;
-        if (resignCountdownMs > 0) {
+    private void advanceCountdown(int milliseconds) {
+        countdownMs -= milliseconds;
+        if (countdownMs > 0) {
             return;
         }
-        log.info("room {}: {} did not return - abandoning the game", roomId, disconnectedUsername);
-        resignCountdownMs = 0;
+        log.info("room {}: {} did not return, forfeiting the game", roomId, absentUsername);
+        countdownMs = 0;
+        forfeitWinner = opponentColourOf(absentUsername);
         session.gameEngine.abandon();
     }
 
-    public MoveResult handleMove(MoveCommand command, String sessionId) {
+    private Piece.Color opponentColourOf(String username) {
+        return switch (seats.roleOf(username)) {
+            case WHITE -> Piece.Color.BLACK;
+            case BLACK -> Piece.Color.WHITE;
+            case VIEWER -> null;
+        };
+    }
+
+    /**
+     * The board's verdict, falling back to the forfeit. Only ever consulted
+     * once the game is over, so a forfeit can never leak into a live game.
+     */
+    private Piece.Color decideWinner() {
+        if (!session.gameEngine.isGameOver()) {
+            return null;
+        }
+        Piece.Color onTheBoard = session.gameEngine.snapshot(null).winner();
+        return onTheBoard != null ? onTheBoard : forfeitWinner;
+    }
+
+    public MoveResult handleMove(MoveCommand command, String username) {
         return submit(() -> {
             Position from = new Position(command.fromRow(), command.fromCol());
-            Optional<MoveResult> rejection = ownershipRejection(from, sessionId);
+            Optional<MoveResult> rejection = rejectionFor(from, username);
             if (rejection.isPresent()) {
                 return rejection.get();
             }
@@ -157,10 +192,10 @@ public final class GameRoom {
         });
     }
 
-    public MoveResult handleJump(JumpCommand command, String sessionId) {
+    public MoveResult handleJump(JumpCommand command, String username) {
         return submit(() -> {
             Position position = new Position(command.row(), command.col());
-            Optional<MoveResult> rejection = ownershipRejection(position, sessionId);
+            Optional<MoveResult> rejection = rejectionFor(position, username);
             if (rejection.isPresent()) {
                 return rejection.get();
             }
@@ -180,9 +215,9 @@ public final class GameRoom {
         });
     }
 
-     public void tick(int milliseconds) {
+    public void tick(int milliseconds) {
         if (queuedTicks.get() >= MAX_QUEUED_TICKS) {
-            log.warn("room {} is falling behind - dropping a tick", roomId);
+            log.warn("room {} is falling behind, dropping a tick", roomId);
             return;
         }
         queuedTicks.incrementAndGet();
@@ -191,19 +226,18 @@ public final class GameRoom {
                 advanceTime(milliseconds);
                 broadcastState();
             } catch (RuntimeException e) {
-                log.error("game tick failed in room {} - the clock continues", roomId, e);
+                log.error("game tick failed in room {}, the clock continues", roomId, e);
             } finally {
                 queuedTicks.decrementAndGet();
             }
         });
     }
 
-    private Optional<MoveResult> ownershipRejection(Position position, String sessionId) {
-        if (!playerAssignmentService.bothSeatsFilled()) {
+    private Optional<MoveResult> rejectionFor(Position position, String username) {
+        if (!seats.bothSeatsFilled()) {
             return Optional.of(reject(MoveReason.WAITING_FOR_OPPONENT));
         }
-
-        if (disconnectedUsername != null) {
+        if (absentUsername != null) {
             return Optional.of(reject(MoveReason.WAITING_FOR_OPPONENT));
         }
 
@@ -211,9 +245,7 @@ public final class GameRoom {
         if (piece == null) {
             return Optional.empty();
         }
-
-        PlayerAssignmentService.Role role = playerAssignmentService.roleForSession(sessionId);
-        if (role.owns(piece.color())) {
+        if (seats.roleOf(username).owns(piece.color())) {
             return Optional.empty();
         }
         return Optional.of(reject(MoveReason.ILLEGAL_PIECE_MOVE));
@@ -223,24 +255,25 @@ public final class GameRoom {
         session.gameEngine.eventBus().publish(new MoveRejectedEvent(reason));
         return MoveResult.rejected(reason);
     }
-
-    public GameStateMessage currentState() {
-        String white = playerAssignmentService.whiteUsername().orElse(null);
-        String black = playerAssignmentService.blackUsername().orElse(null);
+    private GameStateMessage currentState() {
         int whiteScore = session.gameEngine.score(Piece.Color.WHITE);
         int blackScore = session.gameEngine.score(Piece.Color.BLACK);
-        boolean counting = disconnectedUsername != null && !session.gameEngine.isGameOver();
-        Integer resignInSeconds = counting ? Math.max(0, (resignCountdownMs + 999) / 1000) : null;
-        return GameStateMessage.from(session.gameEngine.snapshot(null), white, black,
-                whiteScore, blackScore, disconnectedUsername, resignInSeconds);
+        boolean counting = absentUsername != null && !session.gameEngine.isGameOver();
+        Integer remaining = counting ? Math.max(0, (countdownMs + 999) / 1000) : null;
+        return GameStateMessage.from(
+                session.gameEngine.snapshot(null),
+                seats.whiteUsername().orElse(null),
+                seats.blackUsername().orElse(null),
+                whiteScore, blackScore, absentUsername, remaining, forfeitWinner);
     }
+
     private void broadcastState() {
         GameStateMessage state = currentState();
         if (state.equals(lastBroadcast)) {
             return;
         }
         lastBroadcast = state;
-        messagingTemplate.convertAndSend(Topics.GAME_STATE, state);
+        messagingTemplate.convertAndSend(Topics.gameState(roomId), state);
     }
 
     private void broadcastStateToAll() {
@@ -249,7 +282,7 @@ public final class GameRoom {
     }
 
     private void broadcastMoveHistoryEntry(MoveMadeEvent event) {
-        messagingTemplate.convertAndSend(Topics.MOVE_HISTORY, toEntry(event.record()));
+        messagingTemplate.convertAndSend(Topics.moveHistory(roomId), toEntry(event.record()));
     }
 
     private MoveHistoryEntryMessage toEntry(MoveRecord record) {
@@ -259,6 +292,7 @@ public final class GameRoom {
                 MoveNotation.formatTime(record.timestamp()),
                 record.timestamp());
     }
+
     public List<MoveHistoryEntryMessage> moveHistory() {
         return submit(() -> session.gameEngine.moveHistory().stream()
                 .map(this::toEntry)
@@ -267,12 +301,13 @@ public final class GameRoom {
 
     private void onGameOver(GameOverEvent event) {
         broadcastState();
-        Piece.Color winner = session.gameEngine.snapshot(null).winner();
+        Piece.Color winner = decideWinner();
         ratingService.applyGameResult(
-                playerAssignmentService.whiteUsername().orElse(null),
-                playerAssignmentService.blackUsername().orElse(null),
+                seats.whiteUsername().orElse(null),
+                seats.blackUsername().orElse(null),
                 winner);
     }
+
     private <T> T submit(Callable<T> task) {
         try {
             return gameThread.submit(task).get();

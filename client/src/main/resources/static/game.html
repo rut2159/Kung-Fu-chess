@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Kung Fu Chess</title>
-    <link rel="stylesheet" href="css/shared.css">
-    <link rel="stylesheet" href="css/game.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kung Fu Chess</title>
+<link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/game.css">
 </head>
 <body>
 
-<h1>Kung Fu Chess</h1>
-<div id="status"></div>
-<div id="waitingBanner">Waiting for opponent</div>
-<div id="disconnectBanner"></div>
-<div id="roleInfo"></div>
+<header id="gameHeader">
+    <h1>Kung Fu Chess</h1>
+    <div id="headerRow">
+        <span id="roomTag">Room <b id="roomLabel"></b></span>
+        <button class="btn btn-outline btn-small" id="leaveButton" type="button">Leave</button>
+    </div>
+    <div id="connectionStatus"></div>
+    <div id="waitingBanner">Waiting for an opponent</div>
+    <div id="absenceBanner"></div>
+    <div id="roleInfo"></div>
+</header>
 
 <div id="gameArea">
     <div class="moveHistoryPanel" id="whiteHistoryPanel">
@@ -52,7 +58,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="js/config.js"></script>
 <script src="js/activityLog.js"></script>
+<script src="js/session.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/sounds.js"></script>
+<script src="js/statusBar.js"></script>
+<script src="js/scoreboard.js"></script>
+<script src="js/moveHistory.js"></script>
+<script src="js/boardView.js"></script>
+<script src="js/input.js"></script>
+<script src="js/connection.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

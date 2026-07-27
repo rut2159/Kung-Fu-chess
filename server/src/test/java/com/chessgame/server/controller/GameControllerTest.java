@@ -3,11 +3,14 @@ package com.chessgame.server.controller;
 import com.chessgame.engine.moves.MoveResult;
 import com.chessgame.rules.MoveReason;
 import com.chessgame.server.dto.JoinCommand;
+import com.chessgame.server.dto.JoinRejectedMessage;
 import com.chessgame.server.dto.JumpCommand;
 import com.chessgame.server.dto.MoveCommand;
 import com.chessgame.server.dto.MoveRejectedMessage;
-import com.chessgame.server.service.GameService;
-import com.chessgame.server.service.PlayerAssignmentService;
+import com.chessgame.server.game.GameRoom;
+import com.chessgame.server.game.RoomRegistry;
+import com.chessgame.server.game.Seats;
+import com.chessgame.server.game.Topics;
 import com.chessgame.server.service.SessionTokenService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,24 +24,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Successful moves are now broadcast by GameService itself (bus-driven) -
- * see GameServiceTest for that. This controller's own remaining
- * responsibility is sending a rejection notice to the requester only, and
- * resolving join tokens to real usernames (never trusting a client claim).
- */
 @ExtendWith(MockitoExtension.class)
 class GameControllerTest {
 
-    @Mock
-    private GameService gameService;
+    private static final String ROOM_ID = "K7F2QX";
 
     @Mock
-    private PlayerAssignmentService playerAssignmentService;
+    private RoomRegistry roomRegistry;
+
+    @Mock
+    private GameRoom room;
 
     @Mock
     private SessionTokenService sessionTokenService;
@@ -47,13 +45,21 @@ class GameControllerTest {
     private SimpMessagingTemplate messagingTemplate;
 
     private GameController newController() {
-        return new GameController(gameService, playerAssignmentService, sessionTokenService, messagingTemplate);
+        return new GameController(roomRegistry, sessionTokenService, messagingTemplate);
+    }
+
+    private void sessionIsInARoom() {
+        when(roomRegistry.roomForSession("session-1")).thenReturn(Optional.of(room));
+        when(roomRegistry.usernameForSession("session-1")).thenReturn(Optional.of("alice"));
+        when(room.roomId()).thenReturn(ROOM_ID);
     }
 
     @Test
-    void acceptedMove_doesNotSendARejectionNotice() {
+    void acceptedMoveDoesNotSendARejectionNotice() {
         GameController controller = newController();
-        when(gameService.handleMove(any(), anyString())).thenReturn(MoveResult.accepted());
+        when(roomRegistry.roomForSession("session-1")).thenReturn(Optional.of(room));
+        when(roomRegistry.usernameForSession("session-1")).thenReturn(Optional.of("alice"));
+        when(room.handleMove(any(), anyString())).thenReturn(MoveResult.accepted());
 
         controller.onMove(new MoveCommand(6, 4, 4, 4), "session-1");
 
@@ -61,51 +67,100 @@ class GameControllerTest {
     }
 
     @Test
-    void rejectedMove_sendsARejectionNoticeWithTheSendersUsername() {
+    void rejectedMoveIsReportedOnTheRoomErrorTopic() {
         GameController controller = newController();
-        when(gameService.handleMove(any(), anyString()))
+        sessionIsInARoom();
+        when(room.handleMove(any(), anyString()))
                 .thenReturn(MoveResult.rejected(MoveReason.ILLEGAL_PIECE_MOVE));
-        when(playerAssignmentService.usernameForSession("session-1")).thenReturn(Optional.of("alice"));
 
         controller.onMove(new MoveCommand(6, 4, 4, 4), "session-1");
 
-        verify(messagingTemplate, times(1)).convertAndSend(
-                eq(com.chessgame.server.game.Topics.ERRORS),
-                eq((Object) new MoveRejectedMessage("alice", "ILLEGAL_PIECE_MOVE")));
+        verify(messagingTemplate).convertAndSend(eq(Topics.errors(ROOM_ID)),
+                any(MoveRejectedMessage.class));
     }
 
     @Test
-    void rejectedJump_alsoSendsARejectionNotice() {
+    void rejectedJumpIsReportedOnTheRoomErrorTopic() {
         GameController controller = newController();
-        when(gameService.handleJump(any(), anyString()))
-                .thenReturn(MoveResult.rejected(MoveReason.MOTION_IN_PROGRESS));
-        when(playerAssignmentService.usernameForSession("session-1")).thenReturn(Optional.of("bob"));
+        sessionIsInARoom();
+        when(room.handleJump(any(), anyString()))
+                .thenReturn(MoveResult.rejected(MoveReason.ILLEGAL_PIECE_MOVE));
 
-        controller.onJump(new JumpCommand(4, 4), "session-1");
+        controller.onJump(new JumpCommand(6, 4), "session-1");
 
-        verify(messagingTemplate, times(1)).convertAndSend(
-                eq(com.chessgame.server.game.Topics.ERRORS),
-                eq((Object) new MoveRejectedMessage("bob", "MOTION_IN_PROGRESS")));
+        verify(messagingTemplate).convertAndSend(eq(Topics.errors(ROOM_ID)),
+                any(MoveRejectedMessage.class));
     }
 
     @Test
-    void join_withAValidToken_resolvesTheRealUsernameAndDelegatesToGameService() {
+    void aMoveFromASessionWithNoRoomIsIgnored() {
         GameController controller = newController();
-        when(sessionTokenService.resolveUsername("tok-123")).thenReturn(Optional.of("alice"));
+        when(roomRegistry.roomForSession("session-1")).thenReturn(Optional.empty());
 
-        controller.onJoin(new JoinCommand("tok-123"), "session-1");
+        controller.onMove(new MoveCommand(6, 4, 4, 4), "session-1");
 
-        verify(gameService, times(1)).join("session-1", "alice");
         verify(messagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
     }
 
     @Test
-    void join_withAnUnknownToken_doesNothing_noImpersonationPossible() {
+    void joinResolvesTheUsernameFromTheTokenAndNeverFromTheClient() {
         GameController controller = newController();
-        when(sessionTokenService.resolveUsername("made-up-token")).thenReturn(Optional.empty());
+        when(sessionTokenService.resolveUsername("good-token")).thenReturn(Optional.of("alice"));
+        when(roomRegistry.join(ROOM_ID, "session-1", "alice"))
+                .thenReturn(new RoomRegistry.JoinOutcome(
+                        RoomRegistry.JoinOutcome.Status.JOINED, room, Seats.Role.WHITE, null));
 
-        controller.onJoin(new JoinCommand("made-up-token"), "session-1");
+        controller.onJoin(new JoinCommand("good-token", ROOM_ID), "session-1");
 
-        verify(gameService, never()).join(anyString(), anyString());
+        verify(roomRegistry).join(ROOM_ID, "session-1", "alice");
+    }
+
+    @Test
+    void joinWithAnUnknownTokenIsIgnored() {
+        GameController controller = newController();
+        when(sessionTokenService.resolveUsername("bad-token")).thenReturn(Optional.empty());
+
+        controller.onJoin(new JoinCommand("bad-token", ROOM_ID), "session-1");
+
+        verify(roomRegistry, never()).join(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void aRejectedJoinIsReportedBackToTheClient() {
+        GameController controller = newController();
+        when(sessionTokenService.resolveUsername("good-token")).thenReturn(Optional.of("alice"));
+        when(roomRegistry.join("ZZZZZZ", "session-1", "alice"))
+                .thenReturn(new RoomRegistry.JoinOutcome(
+                        RoomRegistry.JoinOutcome.Status.ROOM_NOT_FOUND, null, null, null));
+
+        controller.onJoin(new JoinCommand("good-token", "ZZZZZZ"), "session-1");
+
+        verify(messagingTemplate).convertAndSend(eq(Topics.errors("ZZZZZZ")),
+                any(JoinRejectedMessage.class));
+    }
+
+    @Test
+    void aRejectedJoinNamesThePlayerItConcerns() {
+        GameController controller = newController();
+        when(sessionTokenService.resolveUsername("good-token")).thenReturn(Optional.of("alice"));
+        when(roomRegistry.join(ROOM_ID, "session-1", "alice"))
+                .thenReturn(new RoomRegistry.JoinOutcome(
+                        RoomRegistry.JoinOutcome.Status.ALREADY_IN_ANOTHER_ROOM, null, null, "OTHER1"));
+
+        controller.onJoin(new JoinCommand("good-token", ROOM_ID), "session-1");
+
+        // The errors topic is shared, so every other client in ROOM_ID also
+        // receives this. Without a name they would all react to Alice's failure.
+        verify(messagingTemplate).convertAndSend(eq(Topics.errors(ROOM_ID)),
+                eq(JoinRejectedMessage.of("alice", "ALREADY_IN_ANOTHER_ROOM", "OTHER1")));
+    }
+
+    @Test
+    void anExplicitLeaveReleasesTheSessionWithoutWaitingForTheDisconnectEvent() {
+        GameController controller = newController();
+
+        controller.onLeave("session-1");
+
+        verify(roomRegistry).leave("session-1");
     }
 }
