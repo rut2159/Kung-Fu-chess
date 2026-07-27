@@ -64,9 +64,20 @@ public class PlayerAssignmentService {
     public Optional<String> usernameForSession(String sessionId) {
         return Optional.ofNullable(usernameBySession.get(sessionId));
     }
+    public synchronized Optional<String> disconnect(String sessionId) {
+        String username = usernameBySession.remove(sessionId);
+        if (username == null || usernameBySession.containsValue(username)) {
+            return Optional.empty();
+        }
+        return Optional.of(username);
+    }
 
-    public void disconnect(String sessionId) {
-        usernameBySession.remove(sessionId);
+    public boolean hasActiveSession(String username) {
+        return usernameBySession.containsValue(username);
+    }
+
+    public Role roleForUsername(String username) {
+        return roleByUsername.getOrDefault(username, Role.VIEWER);
     }
 
     public Optional<String> whiteUsername() {

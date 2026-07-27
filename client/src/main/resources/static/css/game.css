@@ -16,6 +16,17 @@ body { overflow: hidden; }
     margin-bottom: 6px;
     font-size: 13px;
 }
+#disconnectBanner {
+    display: none;
+    color: #e06c5a;
+    background: rgba(224,108,90,0.15);
+    border: 1px solid rgba(224,108,90,0.45);
+    padding: 5px 14px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
 #roleInfo { color: #f5c518; margin-bottom: 6px; min-height: 18px; font-size: 13px; }
 #gameArea {
     display: flex;

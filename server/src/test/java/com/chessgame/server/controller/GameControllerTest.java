@@ -70,7 +70,7 @@ class GameControllerTest {
         controller.onMove(new MoveCommand(6, 4, 4, 4), "session-1");
 
         verify(messagingTemplate, times(1)).convertAndSend(
-                eq("/topic/errors"),
+                eq(com.chessgame.server.game.Topics.ERRORS),
                 eq((Object) new MoveRejectedMessage("alice", "ILLEGAL_PIECE_MOVE")));
     }
 
@@ -84,7 +84,7 @@ class GameControllerTest {
         controller.onJump(new JumpCommand(4, 4), "session-1");
 
         verify(messagingTemplate, times(1)).convertAndSend(
-                eq("/topic/errors"),
+                eq(com.chessgame.server.game.Topics.ERRORS),
                 eq((Object) new MoveRejectedMessage("bob", "MOTION_IN_PROGRESS")));
     }
 

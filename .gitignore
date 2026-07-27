@@ -2,7 +2,18 @@ target/
 *.class
 *.log
 *.tmp
+
+# SQLite - נוצר בזמן ריצה מנתיב יחסי, ומכיל נתוני משתמשים
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
 .idea/
 .vscode/
 *.iml
+
+# OS
 .DS_Store
+Thumbs.db

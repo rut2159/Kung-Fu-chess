@@ -42,8 +42,6 @@ public class AuthController {
     }
 
     private ResponseEntity<Map<String, Object>> loginSuccessResponse(User user) {
-        // The token, not the username itself, is what the client will present
-        // later when joining the game - see SessionTokenService's Javadoc for why.
         String token = sessionTokenService.issueToken(user.username());
         return ResponseEntity.ok(Map.of(
                 "success", true,

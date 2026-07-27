@@ -18,8 +18,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
+        <java.release>26</java.release>
+        <maven.compiler.source>${java.release}</maven.compiler.source>
+        <maven.compiler.target>${java.release}</maven.compiler.target>
         <junit.jupiter.version>5.10.0</junit.jupiter.version>
     </properties>
 
@@ -60,14 +61,13 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <!-- Matches the actual JDK being used (26) - compiling for an
-                             older <release> than the running JDK is "cross-release"
-                             compilation, a less battle-tested code path in javac that
-                             is a known source of internal compiler instability,
-                             especially on a very recently released JDK. This mismatch
-                             (23 vs the JDK 26 actually in use) is the real root cause
-                             of the ConcurrentModificationException. -->
-                        <release>26</release>
+                        <!-- Must match the JDK actually running the build. Compiling
+                             for an older <release> than the running JDK is "cross-release"
+                             compilation, a less battle-tested path in javac and the real
+                             root cause of the ConcurrentModificationException seen here.
+                             java.release drives source, target and release together so
+                             they can never drift apart again. -->
+                        <release>${java.release}</release>
                         <useIncrementalCompilation>false</useIncrementalCompilation>
                         <fork>true</fork>
                     </configuration>
@@ -88,7 +88,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.15</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>

@@ -13,20 +13,18 @@ public record GameStateMessage(
         String whiteUsername,
         String blackUsername,
         int whiteScore,
-        int blackScore
+        int blackScore,
+        String disconnectedUsername,
+        Integer resignInSeconds
 ) {
 
-    /**
-     * שלוש ספרות אחרי הנקודה זה כבר הרבה מתחת לגודל פיקסל על המסך, אבל
-     * ההבדל בתעבורה גדול: double גולמי מסתדר כ-"5.123456789012345" - 17
-     * תווים במקום 5, כפול שלושה שדות כפול 32 כלים, 20 פעמים בשנייה.
-     */
     private static double round(double value) {
         return Math.round(value * 1000.0) / 1000.0;
     }
 
     public static GameStateMessage from(GameSnapshot snapshot, String whiteUsername, String blackUsername,
-                                         int whiteScore, int blackScore) {
+                                         int whiteScore, int blackScore,
+                                         String disconnectedUsername, Integer resignInSeconds) {
         List<PieceDto> pieceDtos = snapshot.pieces().stream()
                 .map(piece -> new PieceDto(
                         piece.id(),
@@ -53,7 +51,9 @@ public record GameStateMessage(
                 whiteUsername,
                 blackUsername,
                 whiteScore,
-                blackScore
+                blackScore,
+                disconnectedUsername,
+                resignInSeconds
         );
     }
 }

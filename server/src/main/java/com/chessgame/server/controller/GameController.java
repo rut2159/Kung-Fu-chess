@@ -6,6 +6,7 @@ import com.chessgame.server.dto.JumpCommand;
 import com.chessgame.server.dto.MoveCommand;
 import com.chessgame.server.dto.MoveHistoryEntryMessage;
 import com.chessgame.server.dto.MoveRejectedMessage;
+import com.chessgame.server.game.Topics;
 import com.chessgame.server.service.GameService;
 import com.chessgame.server.service.PlayerAssignmentService;
 import com.chessgame.server.service.SessionTokenService;
@@ -21,8 +22,6 @@ import java.util.List;
 @Controller
 public class GameController {
 
-    private static final String ERRORS_TOPIC = "/topic/errors";
-
     private final GameService gameService;
     private final PlayerAssignmentService playerAssignmentService;
     private final SessionTokenService sessionTokenService;
@@ -36,13 +35,7 @@ public class GameController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    /**
-     * תמונת מצב של כל היסטוריית המהלכים.
-     *
-     * הלקוח מושך אותה מיד אחרי שהוא מתחבר - גם בטעינה ראשונה, גם אחרי
-     * F5, וגם אחרי כל חיבור-מחדש אוטומטי. בלי זה, /topic/moves לבדו
-     * מספק רק מהלכים שקורים מכאן והלאה, וכל מה שהיה קודם נעלם מהטבלה.
-     */
+
     @GetMapping("/api/moves")
     @ResponseBody
     public List<MoveHistoryEntryMessage> moveHistory() {
@@ -73,7 +66,7 @@ public class GameController {
 
     private void notifyRejected(String sessionId, MoveResult result) {
         String username = playerAssignmentService.usernameForSession(sessionId).orElse(null);
-        messagingTemplate.convertAndSend(ERRORS_TOPIC,
+        messagingTemplate.convertAndSend(Topics.ERRORS,
                 new MoveRejectedMessage(username, result.reason().name()));
     }
 }

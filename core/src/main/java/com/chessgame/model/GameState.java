@@ -1,7 +1,5 @@
 package com.chessgame.model;
 
-
-
 public final class GameState {
     private boolean gameOver = false;
 

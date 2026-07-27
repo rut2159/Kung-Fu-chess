@@ -9,14 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * מגישה את הנכסים המשותפים (לוח וספרייטים) מתוך ה-classpath, כלומר מתוך
- * המודול assets, לדפדפן.
- *
- * שימי לב לאנוטציה: בלעדיה Spring לא רושם את המחלקה הזו בכלל, ואף אחת
- * מהמפות למטה לא קיימת - כל בקשה ל-/board.png או ל-/pieces/** חוזרת 404
- * והלוח מוצג ריק לגמרי, בלי שום שגיאה בצד השרת.
- */
+
 @RestController
 public class AssetController {
 

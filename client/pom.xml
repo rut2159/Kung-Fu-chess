@@ -12,5 +12,12 @@
     <artifactId>client</artifactId>
     <packaging>jar</packaging>
 
-
+    <!--
+        Deliberately has no Java source. This is the web client (HTML/CSS/JS +
+        its own sound clips), kept as a separate module from server
+        on purpose - it's "related to the server" but isn't the server itself.
+        server depends on this module the same way it depends on
+        assets, so Spring Boot's default static-resource serving
+        (classpath:/static/) picks these files up automatically.
+    -->
 </project>

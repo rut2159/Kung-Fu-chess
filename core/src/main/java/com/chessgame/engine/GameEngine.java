@@ -139,7 +139,28 @@ public final class GameEngine {
         }
     }
 
+    public boolean isGameOver() {
+        return gameState.isGameOver();
+    }
+
     public GameSnapshot snapshot(Position selectedCell) {
         return snapshotFactory.build(selectedCell, gameState.isGameOver());
+    }
+
+    /**
+     * סיום המשחק בלי מנצח - שחקן נטש ולכן אי אפשר להמשיך.
+     *
+     * במכוון אין כאן הכרזת מנצח: שני המלכים עדיין על הלוח, ולכן
+     * determineWinner מחזיר null והמשחק נגמר בלי תוצאה.
+     *
+     * קריאה חוזרת אחרי שהמשחק כבר נגמר לא עושה כלום, כדי שניתוק אחרי
+     * לכידת מלך לא ימחק את הניצחון שכבר נקבע.
+     */
+    public void abandon() {
+        if (gameState.isGameOver()) {
+            return;
+        }
+        gameState.setGameOver(true);
+        eventBus.publish(new GameOverEvent());
     }
 }

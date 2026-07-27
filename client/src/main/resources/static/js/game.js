@@ -156,11 +156,26 @@ function renderFrame(newState) {
     drawSelectedCellHighlight();
     syncPieceElements();
 
+    if (newState.resignInSeconds !== undefined || newState.disconnectedUsername !== undefined) {
+        drawDisconnectBanner(newState);
+    }
+
     if (newState.gameOver !== undefined) {
         if (newState.gameOver && !wasGameOver) playSound('gameOver');
         wasGameOver = newState.gameOver;
         drawGameOverBand(newState);
     }
+}
+
+function drawDisconnectBanner(state) {
+    const banner = document.getElementById('disconnectBanner');
+    if (!state.disconnectedUsername || state.resignInSeconds === null || state.resignInSeconds === undefined) {
+        banner.style.display = 'none';
+        return;
+    }
+    banner.textContent = state.disconnectedUsername
+        + ' disconnected - the game ends in ' + state.resignInSeconds + 's';
+    banner.style.display = 'inline-block';
 }
 
 function drawSelectedCellHighlight() {
@@ -239,7 +254,13 @@ function updatePieceSprite(piece) {
 
 function drawGameOverBand(state) {
     gameOverBandEl.style.display = state.gameOver ? 'flex' : 'none';
-    if (!state.winner) { gameOverWinnerEl.textContent = ''; return; }
+
+    if (!state.winner) {
+        gameOverWinnerEl.textContent = state.disconnectedUsername
+            ? state.disconnectedUsername + ' left the game'
+            : '';
+        return;
+    }
 
     const winnerName = state.winner === 'WHITE' ? state.whiteUsername : state.blackUsername;
     gameOverWinnerEl.textContent = (winnerName || state.winner) + ' wins!';

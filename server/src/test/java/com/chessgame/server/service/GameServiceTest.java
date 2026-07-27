@@ -95,7 +95,7 @@ class GameServiceTest {
 
         org.mockito.Mockito.verify(messagingTemplate, org.mockito.Mockito.atLeastOnce())
                 .convertAndSend(
-                        org.mockito.ArgumentMatchers.eq("/topic/game"),
+                        org.mockito.ArgumentMatchers.eq(com.chessgame.server.game.Topics.GAME_STATE),
                         org.mockito.ArgumentMatchers.any(com.chessgame.server.dto.GameStateMessage.class));
     }
 
