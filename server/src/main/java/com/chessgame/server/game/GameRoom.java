@@ -16,6 +16,8 @@ import com.chessgame.server.dto.GameStateMessage;
 import com.chessgame.server.dto.JumpCommand;
 import com.chessgame.server.dto.MoveCommand;
 import com.chessgame.server.dto.MoveHistoryEntryMessage;
+import com.chessgame.server.repository.GameRepository;
+import com.chessgame.server.repository.MoveHistoryRepository;
 import com.chessgame.server.service.RatingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,8 @@ public class GameRoom {
     private final RatingService ratingService;
     private final SimpMessagingTemplate messagingTemplate;
     private final MoveNotation notation;
+    private final GameRepository gameRepository;
+    private final MoveHistoryRepository moveHistoryRepository;
 
     private final ExecutorService gameThread;
     private final AtomicInteger queuedTicks = new AtomicInteger();
@@ -51,14 +55,20 @@ public class GameRoom {
     private int countdownMs;
 
     private Piece.Color forfeitWinner;
+    private Long gameId;
+    private int moveSeq;
 
     public GameRoom(String roomId,
                     Board board,
                     RatingService ratingService,
-                    SimpMessagingTemplate messagingTemplate) {
+                    SimpMessagingTemplate messagingTemplate,
+                    GameRepository gameRepository,
+                    MoveHistoryRepository moveHistoryRepository) {
         this.roomId = roomId;
         this.ratingService = ratingService;
         this.messagingTemplate = messagingTemplate;
+        this.gameRepository = gameRepository;
+        this.moveHistoryRepository = moveHistoryRepository;
 
         this.session = new GameSession(board);
         this.notation = new MoveNotation(board.height());
@@ -68,6 +78,7 @@ public class GameRoom {
         session.gameEngine.eventBus().subscribe(GameOverEvent.class, this::onGameOver);
         session.gameEngine.eventBus().subscribe(MoveMadeEvent.class, event -> broadcastState());
         session.gameEngine.eventBus().subscribe(MoveMadeEvent.class, this::broadcastMoveHistoryEntry);
+        session.gameEngine.eventBus().subscribe(MoveMadeEvent.class, this::persistMoveHistoryEntry);
         session.gameEngine.eventBus().subscribe(ScoreChangedEvent.class, event -> broadcastState());
     }
 
@@ -84,6 +95,10 @@ public class GameRoom {
             Seats.Role role = seats.take(username);
             if (username.equals(absentUsername)) {
                 clearCountdown();
+            }
+            if (gameId == null && seats.bothSeatsFilled()) {
+                gameId = gameRepository.startGame(roomId,
+                        seats.whiteUsername().orElseThrow(), seats.blackUsername().orElseThrow());
             }
             broadcastStateToAll();
             return role;
@@ -293,6 +308,21 @@ public class GameRoom {
                 record.timestamp());
     }
 
+    /**
+     * A move can never arrive before both seats are filled (rejectionFor blocks
+     * it), so gameId is guaranteed to be set here - the null check exists only
+     * as a guard against a future code path that publishes MoveMadeEvent
+     * without going through that gate.
+     */
+    private void persistMoveHistoryEntry(MoveMadeEvent event) {
+        if (gameId == null) {
+            return;
+        }
+        MoveHistoryEntryMessage entry = toEntry(event.record());
+        moveHistoryRepository.append(gameId, roomId, ++moveSeq,
+                entry.color(), entry.notation(), entry.time(), entry.timestampMs());
+    }
+
     public List<MoveHistoryEntryMessage> moveHistory() {
         return submit(() -> session.gameEngine.moveHistory().stream()
                 .map(this::toEntry)
@@ -306,6 +336,9 @@ public class GameRoom {
                 seats.whiteUsername().orElse(null),
                 seats.blackUsername().orElse(null),
                 winner);
+        if (gameId != null) {
+            gameRepository.completeGame(gameId, winner == null ? null : winner.name());
+        }
     }
 
     private <T> T submit(Callable<T> task) {

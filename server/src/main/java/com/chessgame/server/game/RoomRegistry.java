@@ -2,6 +2,8 @@ package com.chessgame.server.game;
 
 import com.chessgame.io.StandardBoard;
 import com.chessgame.server.dto.RoomClosedMessage;
+import com.chessgame.server.repository.GameRepository;
+import com.chessgame.server.repository.MoveHistoryRepository;
 import com.chessgame.server.service.RatingService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -24,15 +26,20 @@ public class RoomRegistry {
 
     private final RatingService ratingService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final GameRepository gameRepository;
+    private final MoveHistoryRepository moveHistoryRepository;
 
     private final Map<String, GameRoom> rooms = new ConcurrentHashMap<>();
     private final Map<String, String> roomBySession = new ConcurrentHashMap<>();
     private final Map<String, String> usernameBySession = new ConcurrentHashMap<>();
     private final Map<String, Long> desertedSince = new ConcurrentHashMap<>();
 
-    public RoomRegistry(RatingService ratingService, SimpMessagingTemplate messagingTemplate) {
+    public RoomRegistry(RatingService ratingService, SimpMessagingTemplate messagingTemplate,
+                         GameRepository gameRepository, MoveHistoryRepository moveHistoryRepository) {
         this.ratingService = ratingService;
         this.messagingTemplate = messagingTemplate;
+        this.gameRepository = gameRepository;
+        this.moveHistoryRepository = moveHistoryRepository;
     }
 
     @PreDestroy
@@ -46,7 +53,7 @@ public class RoomRegistry {
             String candidate = RoomId.generate();
             if (!rooms.containsKey(candidate)) {
                 GameRoom room = new GameRoom(candidate, StandardBoard.create(),
-                        ratingService, messagingTemplate);
+                        ratingService, messagingTemplate, gameRepository, moveHistoryRepository);
                 rooms.put(candidate, room);
                 desertedSince.put(candidate, System.currentTimeMillis());
                 log.info("room {} created", candidate);
