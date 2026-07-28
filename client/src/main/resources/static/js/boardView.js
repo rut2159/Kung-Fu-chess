@@ -208,14 +208,20 @@ KFC.BoardView = (function () {
         if (!state.gameOver) {
             return;
         }
-        if (state.winner) {
-            const name = state.winner === 'WHITE' ? state.whiteUsername : state.blackUsername;
-            gameOverWinnerEl.textContent = (name || state.winner) + ' wins';
+        const name = state.winner === 'WHITE' ? state.whiteUsername
+            : state.winner === 'BLACK' ? state.blackUsername
+            : null;
+
+        if (state.disconnectedUsername) {
+            // Nobody's king was captured here - the win (if any) is a forfeit
+            // for abandonment, not a real chess victory. Saying just "X wins"
+            // would look identical to a checkmate, which is misleading.
+            gameOverWinnerEl.textContent = name
+                ? name + ' wins - ' + state.disconnectedUsername + ' disconnected'
+                : state.disconnectedUsername + ' left the game';
             return;
         }
-        gameOverWinnerEl.textContent = state.disconnectedUsername
-            ? state.disconnectedUsername + ' left the game'
-            : '';
+        gameOverWinnerEl.textContent = name ? name + ' wins' : '';
     }
 
     return {
