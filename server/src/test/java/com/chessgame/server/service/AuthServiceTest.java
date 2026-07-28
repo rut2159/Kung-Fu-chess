@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -50,6 +51,62 @@ class AuthServiceTest {
     }
 
     @Test
+    void register_fails_whenTheUsernameLosesARaceAtTheDatabase() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new DuplicateKeyException("username already exists"))
+                .when(userRepository).insert(eq("alice"), any());
+
+        boolean created = authService.register("alice", "hunter2");
+
+        assertFalse(created, "a UNIQUE-constraint race must report 'taken', not throw");
+    }
+
+    @Test
+    void register_fails_whenTheUsernameIsBlank() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+
+        assertFalse(authService.register("   ", "hunter2"));
+        verify(userRepository, never()).insert(any(), any());
+    }
+
+    @Test
+    void register_fails_whenTheUsernameExceedsTheMaxLength() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+        String tooLong = "a".repeat(33);
+
+        assertFalse(authService.register(tooLong, "hunter2"));
+        verify(userRepository, never()).insert(any(), any());
+    }
+
+    @Test
+    void register_fails_whenThePasswordIsNull() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+
+        assertFalse(authService.register("alice", null));
+        verify(userRepository, never()).insert(any(), any());
+    }
+
+    @Test
+    void register_fails_whenThePasswordIsEmpty() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+
+        assertFalse(authService.register("alice", ""));
+        verify(userRepository, never()).insert(any(), any());
+    }
+
+    @Test
+    void register_normalizesTrailingWhitespaceInTheUsername() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
+
+        authService.register("alice\n", "hunter2");
+
+        verify(userRepository).findByUsername("alice");
+        verify(userRepository).insert(eq("alice"), any());
+    }
+
+    @Test
     void register_neverStoresThePlaintextPassword() {
         AuthService authService = new AuthService(userRepository, passwordEncoder);
         when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
@@ -91,5 +148,26 @@ class AuthServiceTest {
         Optional<User> result = authService.login("ghost", "anything");
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void login_fails_whenThePasswordIsNull() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+
+        Optional<User> result = authService.login("alice", null);
+
+        assertTrue(result.isEmpty());
+        verify(userRepository, never()).findByUsername(any());
+    }
+
+    @Test
+    void login_normalizesTrailingWhitespaceInTheUsername() {
+        AuthService authService = new AuthService(userRepository, passwordEncoder);
+        String realHash = passwordEncoder.encode("hunter2");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(new User(1L, "alice", realHash, 1200)));
+
+        Optional<User> result = authService.login("alice\n", "hunter2");
+
+        assertTrue(result.isPresent(), "login must normalize the username the same way register did");
     }
 }

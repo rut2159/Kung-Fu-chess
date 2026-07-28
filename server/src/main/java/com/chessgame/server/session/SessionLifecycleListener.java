@@ -27,6 +27,10 @@ public final class SessionLifecycleListener {
     @EventListener
     public void onDisconnect(SessionDisconnectEvent event) {
         log.info("websocket disconnected: session={}", event.getSessionId());
-        roomRegistry.leave(event.getSessionId());
+        try {
+            roomRegistry.leave(event.getSessionId());
+        } catch (RuntimeException e) {
+            log.error("room cleanup failed for session={}", event.getSessionId(), e);
+        }
     }
 }

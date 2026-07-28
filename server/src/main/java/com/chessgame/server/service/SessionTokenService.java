@@ -1,13 +1,16 @@
 package com.chessgame.server.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
 @Service
 public class SessionTokenService {
 
@@ -20,11 +23,21 @@ public class SessionTokenService {
     }
 
     private final Map<String, Entry> entriesByToken = new ConcurrentHashMap<>();
+    private final Clock clock;
+
+    @Autowired
+    public SessionTokenService() {
+        this(Clock.systemUTC());
+    }
+
+    SessionTokenService(Clock clock) {
+        this.clock = clock;
+    }
 
     public String issueToken(String username) {
         purgeExpired();
         String token = UUID.randomUUID().toString();
-        entriesByToken.put(token, new Entry(username, Instant.now().plus(TOKEN_TTL)));
+        entriesByToken.put(token, new Entry(username, Instant.now(clock).plus(TOKEN_TTL)));
         return token;
     }
 
@@ -36,7 +49,7 @@ public class SessionTokenService {
         if (entry == null) {
             return Optional.empty();
         }
-        if (entry.isExpired(Instant.now())) {
+        if (entry.isExpired(Instant.now(clock))) {
             entriesByToken.remove(token);
             return Optional.empty();
         }
@@ -50,7 +63,7 @@ public class SessionTokenService {
     }
 
     private void purgeExpired() {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         entriesByToken.values().removeIf(entry -> entry.isExpired(now));
     }
 }

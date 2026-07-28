@@ -3,6 +3,7 @@ package com.chessgame.server.service;
 import com.chessgame.server.repository.User;
 import com.chessgame.server.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,11 +28,6 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * שם משתמש עובר נרמול לפני *כל* גישה למסד. בלי זה, "רותי" ו-"רותי\n"
-     * הם שני חשבונות נפרדים - וזה בדיוק מה שקרה: נרשם חשבון עם ירידת שורה
-     * בסוף השם, שאי אפשר להתחבר אליו כי אף אחד לא יקליד אותה שוב.
-     */
     private static String normalize(String username) {
         return username == null ? "" : username.strip();
     }
@@ -47,8 +43,12 @@ public class AuthService {
         if (userRepository.findByUsername(name).isPresent()) {
             return false;
         }
-        userRepository.insert(name, passwordEncoder.encode(password));
-        return true;
+        try {
+            userRepository.insert(name, passwordEncoder.encode(password));
+            return true;
+        } catch (DuplicateKeyException e) {
+            return false;
+        }
     }
 
     public Optional<User> login(String username, String password) {
