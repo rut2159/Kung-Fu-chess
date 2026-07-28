@@ -1,5 +1,7 @@
 package com.chessgame.server.game;
 
+import com.chessgame.server.repository.GameRepository;
+import com.chessgame.server.repository.MoveHistoryRepository;
 import com.chessgame.server.repository.UserRepository;
 import com.chessgame.server.service.RatingService;
 import org.junit.jupiter.api.Test;
@@ -24,8 +26,15 @@ class RoomRegistryTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private GameRepository gameRepository;
+
+    @Mock
+    private MoveHistoryRepository moveHistoryRepository;
+
     private RoomRegistry newRegistry() {
-        return new RoomRegistry(new RatingService(userRepository), messagingTemplate);
+        return new RoomRegistry(new RatingService(userRepository), messagingTemplate,
+                gameRepository, moveHistoryRepository);
     }
 
     private static long later(long millis) {

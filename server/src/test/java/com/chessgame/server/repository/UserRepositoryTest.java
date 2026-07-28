@@ -1,47 +1,47 @@
 package com.chessgame.server.repository;
 
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
-import java.sql.Statement;
+import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Uses a real (in-memory) SQLite database rather than a mock - the whole
+ * Uses a real (embedded) Postgres database rather than a mock - the whole
  * point of this class is to prove the actual SQL is correct, which a mock
- * can never verify. A SingleConnectionDataSource is required because
- * SQLite's :memory: database only exists for as long as ONE connection
- * to it stays open.
+ * can never verify.
  */
 class UserRepositoryTest {
 
-    private SingleConnectionDataSource dataSource;
+    private static EmbeddedPostgres postgres;
+
     private UserRepository userRepository;
 
+    @BeforeAll
+    static void startDatabase() throws Exception {
+        postgres = EmbeddedDatabase.start();
+    }
+
+    @AfterAll
+    static void stopDatabase() throws IOException {
+        postgres.close();
+    }
+
     @BeforeEach
-    void setUp() throws Exception {
-        dataSource = new SingleConnectionDataSource("jdbc:sqlite::memory:", true);
-        try (Statement statement = dataSource.getConnection().createStatement()) {
-            statement.execute(
-                    "CREATE TABLE users (" +
-                    "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                    "  username TEXT UNIQUE NOT NULL," +
-                    "  password_hash TEXT NOT NULL," +
-                    "  rating INTEGER NOT NULL DEFAULT 1200" +
-                    ")"
-            );
-        }
-        userRepository = new UserRepository(JdbcClient.create(dataSource));
+    void setUp() {
+        userRepository = new UserRepository(JdbcClient.create(postgres.getPostgresDatabase()));
     }
 
     @AfterEach
-    void tearDown() {
-        dataSource.destroy();
+    void cleanUp() throws Exception {
+        EmbeddedDatabase.reset(postgres);
     }
 
     @Test

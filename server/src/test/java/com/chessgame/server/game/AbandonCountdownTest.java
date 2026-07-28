@@ -4,6 +4,8 @@ import com.chessgame.io.StandardBoard;
 import com.chessgame.model.Piece;
 import com.chessgame.server.dto.GameStateMessage;
 import com.chessgame.server.dto.MoveCommand;
+import com.chessgame.server.repository.GameRepository;
+import com.chessgame.server.repository.MoveHistoryRepository;
 import com.chessgame.server.repository.User;
 import com.chessgame.server.repository.UserRepository;
 import com.chessgame.server.service.RatingService;
@@ -42,9 +44,15 @@ class AbandonCountdownTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private GameRepository gameRepository;
+
+    @Mock
+    private MoveHistoryRepository moveHistoryRepository;
+
     private GameRoom newRoomWithTwoPlayers() {
         GameRoom room = new GameRoom(ROOM_ID, StandardBoard.create(),
-                new RatingService(userRepository), messagingTemplate);
+                new RatingService(userRepository), messagingTemplate, gameRepository, moveHistoryRepository);
         room.join("alice");
         room.join("bob");
         return room;
@@ -102,7 +110,7 @@ class AbandonCountdownTest {
     @Test
     void leavingBeforeTheOpponentArrivesReleasesTheSeatInsteadOfStartingACountdown() {
         GameRoom room = new GameRoom(ROOM_ID, StandardBoard.create(),
-                new RatingService(userRepository), messagingTemplate);
+                new RatingService(userRepository), messagingTemplate, gameRepository, moveHistoryRepository);
         room.join("alice");
 
         room.playerLeft("alice");
@@ -117,7 +125,7 @@ class AbandonCountdownTest {
     @Test
     void theFreedSeatGoesToTheNextPlayerToArrive() {
         GameRoom room = new GameRoom(ROOM_ID, StandardBoard.create(),
-                new RatingService(userRepository), messagingTemplate);
+                new RatingService(userRepository), messagingTemplate, gameRepository, moveHistoryRepository);
         room.join("alice");
         room.playerLeft("alice");
 
@@ -127,7 +135,7 @@ class AbandonCountdownTest {
     @Test
     void aRoomThatNeverStartedIsNotRated() {
         GameRoom room = new GameRoom(ROOM_ID, StandardBoard.create(),
-                new RatingService(userRepository), messagingTemplate);
+                new RatingService(userRepository), messagingTemplate, gameRepository, moveHistoryRepository);
         room.join("alice");
 
         room.playerLeft("alice");

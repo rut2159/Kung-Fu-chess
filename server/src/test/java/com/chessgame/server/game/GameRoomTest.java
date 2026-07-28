@@ -4,6 +4,8 @@ import com.chessgame.io.BoardParser;
 import com.chessgame.model.Board;
 import com.chessgame.server.dto.GameStateMessage;
 import com.chessgame.server.dto.MoveCommand;
+import com.chessgame.server.repository.GameRepository;
+import com.chessgame.server.repository.MoveHistoryRepository;
 import com.chessgame.server.repository.UserRepository;
 import com.chessgame.server.service.RatingService;
 import org.junit.jupiter.api.Test;
@@ -34,9 +36,16 @@ class GameRoomTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private GameRepository gameRepository;
+
+    @Mock
+    private MoveHistoryRepository moveHistoryRepository;
+
     private GameRoom newRoom(String boardText) {
         Board board = new BoardParser().parse(boardText);
-        return new GameRoom(ROOM_ID, board, new RatingService(userRepository), messagingTemplate);
+        return new GameRoom(ROOM_ID, board, new RatingService(userRepository), messagingTemplate,
+                gameRepository, moveHistoryRepository);
     }
 
     private GameRoom newRoomWithTwoPlayers(String boardText) {
@@ -92,7 +101,8 @@ class GameRoomTest {
     void twoRoomsBroadcastOnSeparateTopics() {
         GameRoom first = newRoomWithTwoPlayers("wR . .");
         Board board = new BoardParser().parse("wR . .");
-        GameRoom second = new GameRoom("ABCDEF", board, new RatingService(userRepository), messagingTemplate);
+        GameRoom second = new GameRoom("ABCDEF", board, new RatingService(userRepository), messagingTemplate,
+                gameRepository, moveHistoryRepository);
         second.join("carol");
         second.join("dave");
 
